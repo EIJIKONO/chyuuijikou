@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>注意事項アプリ</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --border: #d9dde3;
+    --text: #222;
+    --muted: #6b7280;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --tag-bg: #e5edff;
+    --tag-text: #1e40af;
+    --tag-active: #2563eb;
+    --tag-active-text: #fff;
+    --hit: #fff7d6;
+    --done: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "Meiryo", sans-serif;
+    font-size: 14px;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 {
+    font-size: 18px; margin: 0; flex: 0 0 auto;
+  }
+  header .spacer { flex: 1; }
+  button {
+    font-family: inherit; font-size: 13px;
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    cursor: pointer;
+  }
+  button:hover { background: #f0f3f7; }
+  button.primary {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+  button.primary:hover { background: var(--primary-dark); }
+  button.danger {
+    background: #fff; color: var(--danger); border-color: var(--danger);
+  }
+  button.danger:hover { background: #fef2f2; }
+
+  .toolbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .search-row { display: flex; gap: 8px; align-items: center; }
+  .search-row input[type="text"] {
+    flex: 1;
+    font-family: inherit; font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: #fff;
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag-row .label { color: var(--muted); font-size: 12px; margin-right: 4px; }
+  .chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: var(--tag-bg); color: var(--tag-text);
+    cursor: pointer;
+    border: 1px solid transparent;
+    user-select: none;
+  }
+  .chip.active {
+    background: var(--tag-active); color: var(--tag-active-text);
+  }
+  .chip.readonly { cursor: default; }
+
+  main {
+    display: flex;
+    height: calc(100vh - 130px);
+    min-height: 400px;
+  }
+  .pane-list {
+    flex: 0 0 280px;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    overflow-y: auto;
+  }
+  .pane-detail {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    background: var(--bg);
+  }
+  .entry-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .entry-item:hover { background: #f0f3f7; }
+  .entry-item.selected { background: var(--hit); }
+  .entry-item .title { font-weight: 600; margin-bottom: 4px; }
+  .entry-item .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .entry-item .tags .chip { font-size: 10px; padding: 1px 6px; }
+  .empty {
+    padding: 30px; text-align: center; color: var(--muted);
+  }
+  .detail-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .detail-card h2 {
+    margin: 0 0 8px; font-size: 22px;
+  }
+  .detail-card .detail-tags {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px;
+  }
+  .detail-card section {
+    margin-top: 20px;
+  }
+  .detail-card section h3 {
+    font-size: 14px; color: var(--primary-dark);
+    margin: 0 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--primary);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .detail-card .body-text {
+    white-space: pre-wrap;
+    background: #fafbfc;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    line-height: 1.7;
+  }
+  .checklist {
+    list-style: none; margin: 0; padding: 0;
+  }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+  .checklist li:hover { background: #f0f3f7; }
+  .checklist li input[type="checkbox"] {
+    margin-top: 3px; width: 16px; height: 16px;
+    cursor: pointer;
+  }
+  .checklist li label {
+    flex: 1; cursor: pointer; line-height: 1.6;
+  }
+  .checklist li.done label {
+    text-decoration: line-through; color: var(--done);
+  }
+  .actions-row {
+    display: flex; gap: 8px;
+    margin-top: 24px; padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border-radius: 8px;
+    width: 90%; max-width: 720px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 20px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h2 { margin: 0 0 16px; font-size: 18px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 12px; color: var(--muted);
+    margin-bottom: 4px; font-weight: 600;
+  }
+  .form-group input[type="text"],
+  .form-group textarea {
+    width: 100%;
+    font-family: inherit; font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: #fff;
+    resize: vertical;
+  }
+  .form-group .hint {
+    font-size: 11px; color: var(--muted); margin-top: 3px;
+  }
+  .checklist-edit-list { list-style: none; padding: 0; margin: 0; }
+  .checklist-edit-list li {
+    display: flex; gap: 6px; margin-bottom: 6px;
+  }
+  .checklist-edit-list li input[type="text"] { flex: 1; }
+  .checklist-edit-list li button {
+    padding: 4px 10px; color: var(--danger); border-color: var(--border);
+  }
+  .modal-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-top: 20px; padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .hidden-file { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 注意事項アプリ</h1>
+  <div class="spacer"></div>
+  <button class="primary" id="btn-new">＋ 新規追加</button>
+  <button id="btn-import">↑ Import</button>
+  <button id="btn-export">↓ Export</button>
+  <input type="file" id="file-input" class="hidden-file" accept="application/json">
+</header>
+
+<div class="toolbar">
+  <div class="search-row">
+    <input type="text" id="search-input" placeholder="🔍 キーワード検索（例：現場、契約、立会）">
+    <button id="btn-clear-search">クリア</button>
+  </div>
+  <div class="tag-row" id="tag-row">
+    <span class="label">タグ:</span>
+  </div>
+</div>
+
+<main>
+  <div class="pane-list" id="pane-list"></div>
+  <div class="pane-detail" id="pane-detail"></div>
+</main>
+
+<!-- 編集モーダル -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <h2 id="edit-modal-title">新規ナレッジ</h2>
+    <div class="form-group">
+      <label>タイトル *</label>
+      <input type="text" id="f-title" placeholder="例：現場立会い">
+    </div>
+    <div class="form-group">
+      <label>キーワード（カンマ区切り・別名でヒットさせたい語）</label>
+      <input type="text" id="f-keywords" placeholder="例：現場, 立会, 立ち会い">
+    </div>
+    <div class="form-group">
+      <label>タグ（カンマ区切り）</label>
+      <input type="text" id="f-tags" placeholder="例：販売店, 現場, 新規">
+    </div>
+    <div class="form-group">
+      <label>業務フロー（手順を改行で区切って入力）</label>
+      <textarea id="f-flow" rows="6" placeholder="1. 事前に図面を確認&#10;2. 現場到着後、責任者と挨拶"></textarea>
+    </div>
+    <div class="form-group">
+      <label>チェックリスト</label>
+      <ul class="checklist-edit-list" id="f-checklist-list"></ul>
+      <button type="button" id="btn-add-check">＋ 項目追加</button>
+    </div>
+    <div class="form-group">
+      <label>注意事項（自由記入）</label>
+      <textarea id="f-notes" rows="5" placeholder="・15分前到着厳守&#10;・名刺切れに注意"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button id="btn-cancel-edit">キャンセル</button>
+      <button class="primary" id="btn-save-edit">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- インポート確認モーダル -->
+<div class="modal-backdrop" id="import-modal">
+  <div class="modal" style="max-width: 480px;">
+    <h2>インポート方法</h2>
+    <p id="import-summary" style="color: var(--muted);"></p>
+    <div class="modal-actions">
+      <button id="btn-cancel-import">キャンセル</button>
+      <button id="btn-import-merge">マージ（新しい方を採用）</button>
+      <button class="primary" id="btn-import-overwrite">上書き</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===== データレイヤー =====
+const STORAGE_KEY = 'noticeAppData';
+const DATA_VERSION = 1;
+
+const SAMPLE_DATA = {
+  version: DATA_VERSION,
+  entries: [
+    {
+      id: crypto.randomUUID(),
+      title: '現場立会い',
+      keywords: ['現場', '立会', '立ち会い', '現調'],
+      tags: ['販売店', '現場', '新規'],
+      flow: '1. 事前に図面・仕様書を確認\n2. 出発前に必要備品を再確認（名刺・図面・メジャー・カメラ）\n3. 現場到着15分前を目標に到着\n4. 責任者へ挨拶、本日の流れを確認\n5. 立会内容を記録（写真・メモ）\n6. 帰社後、報告書を当日中に作成',
+      checklist: [
+        { text: '名刺を3枚以上携帯', done: false },
+        { text: '図面コピーを持参', done: false },
+        { text: 'メジャー・カメラ', done: false },
+        { text: '車両ガソリン残量確認', done: false },
+        { text: '訪問先の連絡先を控える', done: false }
+      ],
+      notes: '・15分前到着厳守\n・写真は必ず広角／部分の2枚撮る\n・現場で約束した内容は必ず議事メモに残す\n・帰社後の報告は当日中（翌日NG）',
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: crypto.randomUUID(),
+      title: '契約書チェック',
+      keywords: ['契約', '契約書', 'サイン', '締結'],
+      tags: ['販売店', '契約', '事務'],
+      flow: '1. 契約書テンプレートと差分を比較\n2. 金額・支払条件・納期を再確認\n3. お客様情報（社名・住所・代表者）を登記情報と照合\n4. 上長の承認印取得\n5. 製本・捺印\n6. 控えのスキャンと保管',
+      checklist: [
+        { text: '金額（税込・税抜）の整合', done: false },
+        { text: '支払サイト・支払方法', done: false },
+        { text: '納期', done: false },
+        { text: '甲乙の表記', done: false },
+        { text: '住所・代表者名の正確性', done: false },
+        { text: '収入印紙の要否確認', done: false }
+      ],
+      notes: '・金額は必ず2人以上でクロスチェック\n・捺印前に必ず上長承認\n・原本は鍵付きキャビネット保管',
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: crypto.randomUUID(),
+      title: '競馬予想',
+      keywords: ['競馬', '予想', '馬券', 'レース', '重賞', 'JRA'],
+      tags: ['趣味', '競馬', '予想'],
+      flow: '1. レース前日：出馬表・枠順を確認\n2. 各馬の前走3戦の内容（タイム・上がり3F・着差）を確認\n3. 調教タイムと馬体重推移をチェック\n4. コース適性（芝/ダート・距離・右回り/左回り）を評価\n5. 騎手×調教師×厩舎の組み合わせを確認\n6. 当日朝：馬場状態・天気・風向きを最終確認\n7. パドック・返し馬で気配チェック\n8. オッズ動向と人気のズレを確認\n9. 軸馬・相手・押さえを決定し買い目を組む\n10. 予算配分を決めて投票',
+      checklist: [
+        { text: '予算の上限を決めた', done: false },
+        { text: '出馬表・枠順を確認した', done: false },
+        { text: '前走3戦の内容を確認した', done: false },
+        { text: '調教タイムをチェックした', done: false },
+        { text: '馬体重の増減を確認した', done: false },
+        { text: '馬場状態（良/稍/重/不良）を確認した', done: false },
+        { text: '天気・風の影響を考慮した', done: false },
+        { text: 'パドック・返し馬を見た', done: false },
+        { text: 'オッズ動向を最終確認した', done: false },
+        { text: '買い目と配分を紙に書き出した', done: false },
+        { text: '締切時刻に余裕を持って投票した', done: false }
+      ],
+      notes: '・予算は厳守。負けが込んでも追加入金しない\n・1日の上限を決めて、超えたら即撤退\n・1レース全張り禁止、複数レースに分散\n・「絶対」は競馬にない。常に外れる前提で配分\n・直前で気配が悪いと感じたら見送る勇気\n・体調不良・飲酒時・感情が乱れている時は予想しない\n・当たり分の70%は引き出して再投資に回さない\n・人気馬を切る判断は明確な根拠があるときだけ\n・血統・ローテはあくまで補助情報、現状の状態優先',
+      updatedAt: new Date().toISOString()
+    }
+  ]
+};
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      saveData(SAMPLE_DATA);
+      return SAMPLE_DATA;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed.entries) throw new Error('invalid');
+    return parsed;
+  } catch {
+    saveData(SAMPLE_DATA);
+    return SAMPLE_DATA;
+  }
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ===== 状態 =====
+let state = {
+  data: loadData(),
+  searchTerm: '',
+  activeTags: new Set(),
+  selectedId: null,
+  editingId: null  // null = 新規, それ以外 = 編集対象ID
+};
+
+// ===== ユーティリティ =====
+function normalize(s) {
+  return (s || '').normalize('NFKC').toLowerCase();
+}
+
+function splitCsv(s) {
+  return (s || '').split(/[,、]/).map(t => t.trim()).filter(Boolean);
+}
+
+function allTags() {
+  const set = new Set();
+  state.data.entries.forEach(e => (e.tags || []).forEach(t => set.add(t)));
+  return Array.from(set).sort();
+}
+
+function filterEntries() {
+  const q = normalize(state.searchTerm);
+  return state.data.entries.filter(e => {
+    // タグAND絞り込み
+    for (const t of state.activeTags) {
+      if (!(e.tags || []).includes(t)) return false;
+    }
+    if (!q) return true;
+    // 検索文字列：title / keywords / tags / flow / notes / checklist text を対象に部分一致
+    const haystacks = [
+      e.title,
+      (e.keywords || []).join(' '),
+      (e.tags || []).join(' '),
+      e.flow,
+      e.notes,
+      (e.checklist || []).map(c => c.text).join(' ')
+    ].map(normalize).join(' ');
+    return haystacks.includes(q);
+  });
+}
+
+// ===== レンダリング =====
+function render() {
+  renderTags();
+  renderList();
+  renderDetail();
+}
+
+function renderTags() {
+  const container = document.getElementById('tag-row');
+  container.innerHTML = '<span class="label">タグ:</span>';
+  const tags = allTags();
+  if (tags.length === 0) {
+    const span = document.createElement('span');
+    span.className = 'label';
+    span.textContent = '（タグ未登録）';
+    container.appendChild(span);
+    return;
+  }
+  tags.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'chip' + (state.activeTags.has(t) ? ' active' : '');
+    chip.textContent = t;
+    chip.onclick = () => {
+      if (state.activeTags.has(t)) state.activeTags.delete(t);
+      else state.activeTags.add(t);
+      render();
+    };
+    container.appendChild(chip);
+  });
+}
+
+function renderList() {
+  const container = document.getElementById('pane-list');
+  container.innerHTML = '';
+  const list = filterEntries();
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty">該当なし</div>';
+    return;
+  }
+  list.forEach(e => {
+    const item = document.createElement('div');
+    item.className = 'entry-item' + (e.id === state.selectedId ? ' selected' : '');
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = e.title;
+    item.appendChild(title);
+    if (e.tags && e.tags.length) {
+      const tags = document.createElement('div');
+      tags.className = 'tags';
+      e.tags.forEach(t => {
+        const c = document.createElement('span');
+        c.className = 'chip readonly';
+        c.textContent = t;
+        tags.appendChild(c);
+      });
+      item.appendChild(tags);
+    }
+    item.onclick = () => {
+      state.selectedId = e.id;
+      render();
+    };
+    container.appendChild(item);
+  });
+}
+
+function renderDetail() {
+  const container = document.getElementById('pane-detail');
+  container.innerHTML = '';
+  const list = filterEntries();
+  // 選択中エントリが現在のフィルタに含まれない場合は先頭を選ぶ
+  let entry = state.data.entries.find(e => e.id === state.selectedId);
+  if (!entry || !list.find(e => e.id === entry.id)) {
+    entry = list[0];
+    state.selectedId = entry ? entry.id : null;
+  }
+  if (!entry) {
+    container.innerHTML = '<div class="empty">左のリストからナレッジを選択してください<br><br>または「＋新規追加」から登録できます。</div>';
+    return;
+  }
+  const card = document.createElement('div');
+  card.className = 'detail-card';
+
+  const h2 = document.createElement('h2');
+  h2.textContent = entry.title;
+  card.appendChild(h2);
+
+  if (entry.tags && entry.tags.length) {
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'detail-tags';
+    entry.tags.forEach(t => {
+      const c = document.createElement('span');
+      c.className = 'chip readonly';
+      c.textContent = t;
+      tagsDiv.appendChild(c);
+    });
+    card.appendChild(tagsDiv);
+  }
+
+  // フロー
+  if (entry.flow && entry.flow.trim()) {
+    const sec = document.createElement('section');
+    const h3 = document.createElement('h3');
+    h3.textContent = '【業務フロー】';
+    sec.appendChild(h3);
+    const body = document.createElement('div');
+    body.className = 'body-text';
+    body.textContent = entry.flow;
+    sec.appendChild(body);
+    card.appendChild(sec);
+  }
+
+  // チェックリスト
+  if (entry.checklist && entry.checklist.length) {
+    const sec = document.createElement('section');
+    const h3 = document.createElement('h3');
+    h3.innerHTML = '<span>【チェックリスト】</span>';
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = 'リセット';
+    resetBtn.onclick = () => {
+      entry.checklist.forEach(c => c.done = false);
+      saveData(state.data);
+      render();
+    };
+    h3.appendChild(resetBtn);
+    sec.appendChild(h3);
+    const ul = document.createElement('ul');
+    ul.className = 'checklist';
+    entry.checklist.forEach((c, i) => {
+      const li = document.createElement('li');
+      if (c.done) li.classList.add('done');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!c.done;
+      cb.id = `chk-${entry.id}-${i}`;
+      cb.onchange = () => {
+        c.done = cb.checked;
+        saveData(state.data);
+        render();
+      };
+      const label = document.createElement('label');
+      label.htmlFor = cb.id;
+      label.textContent = c.text;
+      li.appendChild(cb);
+      li.appendChild(label);
+      ul.appendChild(li);
+    });
+    sec.appendChild(ul);
+    card.appendChild(sec);
+  }
+
+  // 注意事項
+  if (entry.notes && entry.notes.trim()) {
+    const sec = document.createElement('section');
+    const h3 = document.createElement('h3');
+    h3.textContent = '【注意事項】';
+    sec.appendChild(h3);
+    const body = document.createElement('div');
+    body.className = 'body-text';
+    body.textContent = entry.notes;
+    sec.appendChild(body);
+    card.appendChild(sec);
+  }
+
+  // アクション
+  const actions = document.createElement('div');
+  actions.className = 'actions-row';
+  const editBtn = document.createElement('button');
+  editBtn.className = 'primary';
+  editBtn.textContent = '編集';
+  editBtn.onclick = () => openEditModal(entry.id);
+  const delBtn = document.createElement('button');
+  delBtn.className = 'danger';
+  delBtn.textContent = '削除';
+  delBtn.onclick = () => {
+    if (confirm(`「${entry.title}」を削除しますか？\nこの操作は取り消せません。`)) {
+      state.data.entries = state.data.entries.filter(e => e.id !== entry.id);
+      state.selectedId = null;
+      saveData(state.data);
+      render();
+    }
+  };
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+  card.appendChild(actions);
+
+  container.appendChild(card);
+}
+
+// ===== 編集モーダル =====
+function openEditModal(id) {
+  state.editingId = id;
+  const entry = id ? state.data.entries.find(e => e.id === id) : null;
+  document.getElementById('edit-modal-title').textContent = entry ? 'ナレッジ編集' : '新規ナレッジ';
+  document.getElementById('f-title').value = entry ? entry.title : '';
+  document.getElementById('f-keywords').value = entry ? (entry.keywords || []).join(', ') : '';
+  document.getElementById('f-tags').value = entry ? (entry.tags || []).join(', ') : '';
+  document.getElementById('f-flow').value = entry ? (entry.flow || '') : '';
+  document.getElementById('f-notes').value = entry ? (entry.notes || '') : '';
+  renderChecklistEdit(entry ? entry.checklist : []);
+  document.getElementById('edit-modal').classList.add('show');
+  setTimeout(() => document.getElementById('f-title').focus(), 50);
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+  state.editingId = null;
+}
+
+function renderChecklistEdit(items) {
+  const ul = document.getElementById('f-checklist-list');
+  ul.innerHTML = '';
+  (items || []).forEach(item => addChecklistRow(item.text));
+}
+
+function addChecklistRow(text = '') {
+  const ul = document.getElementById('f-checklist-list');
+  const li = document.createElement('li');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = text;
+  input.placeholder = 'チェック項目';
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.textContent = '×';
+  del.onclick = () => li.remove();
+  li.appendChild(input);
+  li.appendChild(del);
+  ul.appendChild(li);
+}
+
+function saveEdit() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) {
+    alert('タイトルは必須です');
+    return;
+  }
+  const keywords = splitCsv(document.getElementById('f-keywords').value);
+  const tags = splitCsv(document.getElementById('f-tags').value);
+  const flow = document.getElementById('f-flow').value;
+  const notes = document.getElementById('f-notes').value;
+  const checklist = Array.from(document.querySelectorAll('#f-checklist-list input[type="text"]'))
+    .map(i => i.value.trim())
+    .filter(Boolean)
+    .map(text => {
+      // 既存項目のdoneを引き継ぐ
+      if (state.editingId) {
+        const old = state.data.entries.find(e => e.id === state.editingId);
+        const found = old && old.checklist && old.checklist.find(c => c.text === text);
+        if (found) return { text, done: !!found.done };
+      }
+      return { text, done: false };
+    });
+
+  if (state.editingId) {
+    const e = state.data.entries.find(x => x.id === state.editingId);
+    e.title = title; e.keywords = keywords; e.tags = tags;
+    e.flow = flow; e.notes = notes; e.checklist = checklist;
+    e.updatedAt = new Date().toISOString();
+    state.selectedId = e.id;
+  } else {
+    const newEntry = {
+      id: crypto.randomUUID(),
+      title, keywords, tags, flow, notes, checklist,
+      updatedAt: new Date().toISOString()
+    };
+    state.data.entries.push(newEntry);
+    state.selectedId = newEntry.id;
+  }
+  saveData(state.data);
+  closeEditModal();
+  render();
+}
+
+// ===== JSONインポート / エクスポート =====
+function exportJson() {
+  const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  a.href = url;
+  a.download = `notice-app-backup-${yyyy}${mm}${dd}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+let pendingImportData = null;
+
+function startImport() {
+  document.getElementById('file-input').click();
+}
+
+function onFilePicked(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed || !Array.isArray(parsed.entries)) {
+        alert('不正なJSONファイルです');
+        return;
+      }
+      pendingImportData = parsed;
+      document.getElementById('import-summary').textContent =
+        `読み込んだエントリ数：${parsed.entries.length} 件 / 現在のエントリ数：${state.data.entries.length} 件`;
+      document.getElementById('import-modal').classList.add('show');
+    } catch {
+      alert('JSONとして読み込めませんでした');
+    } finally {
+      ev.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applyImport(mode) {
+  if (!pendingImportData) return;
+  if (mode === 'overwrite') {
+    state.data = {
+      version: DATA_VERSION,
+      entries: pendingImportData.entries.map(normalizeImportedEntry)
+    };
+  } else {
+    // merge: id重複は updatedAt が新しい方
+    const map = new Map(state.data.entries.map(e => [e.id, e]));
+    pendingImportData.entries.map(normalizeImportedEntry).forEach(incoming => {
+      const cur = map.get(incoming.id);
+      if (!cur) { map.set(incoming.id, incoming); return; }
+      const a = Date.parse(cur.updatedAt || 0) || 0;
+      const b = Date.parse(incoming.updatedAt || 0) || 0;
+      if (b > a) map.set(incoming.id, incoming);
+    });
+    state.data = { version: DATA_VERSION, entries: Array.from(map.values()) };
+  }
+  saveData(state.data);
+  pendingImportData = null;
+  document.getElementById('import-modal').classList.remove('show');
+  state.selectedId = null;
+  render();
+}
+
+function normalizeImportedEntry(e) {
+  return {
+    id: e.id || crypto.randomUUID(),
+    title: e.title || '(無題)',
+    keywords: Array.isArray(e.keywords) ? e.keywords : [],
+    tags: Array.isArray(e.tags) ? e.tags : [],
+    flow: e.flow || '',
+    notes: e.notes || '',
+    checklist: Array.isArray(e.checklist)
+      ? e.checklist.map(c => ({ text: c.text || '', done: !!c.done }))
+      : [],
+    updatedAt: e.updatedAt || new Date().toISOString()
+  };
+}
+
+// ===== イベント配線 =====
+document.getElementById('search-input').addEventListener('input', e => {
+  state.searchTerm = e.target.value;
+  render();
+});
+document.getElementById('btn-clear-search').onclick = () => {
+  document.getElementById('search-input').value = '';
+  state.searchTerm = '';
+  state.activeTags.clear();
+  render();
+};
+document.getElementById('btn-new').onclick = () => openEditModal(null);
+document.getElementById('btn-cancel-edit').onclick = closeEditModal;
+document.getElementById('btn-save-edit').onclick = saveEdit;
+document.getElementById('btn-add-check').onclick = () => addChecklistRow('');
+document.getElementById('btn-export').onclick = exportJson;
+document.getElementById('btn-import').onclick = startImport;
+document.getElementById('file-input').addEventListener('change', onFilePicked);
+document.getElementById('btn-cancel-import').onclick = () => {
+  pendingImportData = null;
+  document.getElementById('import-modal').classList.remove('show');
+};
+document.getElementById('btn-import-overwrite').onclick = () => applyImport('overwrite');
+document.getElementById('btn-import-merge').onclick = () => applyImport('merge');
+
+// ESCでモーダルを閉じる
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeEditModal();
+    document.getElementById('import-modal').classList.remove('show');
+  }
+});
+
+// 初期描画
+render();
+</script>
+</body>
+</html>
