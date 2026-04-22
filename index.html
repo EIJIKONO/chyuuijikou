@@ -202,6 +202,195 @@
   .checklist li.done label {
     text-decoration: line-through; color: var(--done);
   }
+
+  /* グループ化されたチェックリスト */
+  .checklist-overall {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .checklist-overall-text {
+    font-size: 13px; color: var(--muted);
+    flex: 0 0 auto;
+    min-width: 140px;
+  }
+  .checklist-overall-text strong {
+    color: var(--text);
+    font-size: 14px;
+    margin-right: 4px;
+  }
+  .checklist-overall-bar {
+    flex: 1;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .checklist-overall-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #60a5fa, #2563eb);
+    transition: width 0.3s ease;
+  }
+  .checklist-overall-fill.complete {
+    background: linear-gradient(90deg, #4ade80, #16a34a);
+  }
+  .checklist-global-actions {
+    display: flex; gap: 6px; margin-bottom: 10px;
+  }
+  .checklist-global-actions button {
+    font-size: 12px; padding: 3px 10px;
+  }
+  .checklist-group {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .checklist-group.complete {
+    background: #f0fdf4;
+    border-color: #86efac;
+  }
+  .checklist-group-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    background: #f9fafb;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .checklist-group-header:hover { background: #f0f3f7; }
+  .checklist-group.complete .checklist-group-header {
+    background: #dcfce7;
+  }
+  .checklist-group.collapsed .checklist-group-header {
+    border-bottom: none;
+  }
+  .checklist-group-toggle {
+    color: var(--muted);
+    font-size: 11px;
+    width: 12px;
+    flex: 0 0 12px;
+  }
+  .checklist-group-title {
+    flex: 1;
+    color: var(--primary-dark);
+  }
+  .checklist-group.complete .checklist-group-title {
+    color: #15803d;
+  }
+  .checklist-group-badge {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 2px 10px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+  .checklist-group.complete .checklist-group-badge {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+  }
+  .checklist-group-items {
+    list-style: none; margin: 0; padding: 6px 8px;
+  }
+  .checklist-group-items li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 10px;
+    border-radius: 4px;
+  }
+  .checklist-group-items li:hover { background: #f0f3f7; }
+  .checklist-group-items li input[type="checkbox"] {
+    margin-top: 3px; width: 18px; height: 18px;
+    cursor: pointer;
+    flex: 0 0 18px;
+  }
+  .checklist-group-items li label {
+    flex: 1; cursor: pointer; line-height: 1.6;
+  }
+  .checklist-group-items li.done label {
+    text-decoration: line-through; color: var(--done);
+  }
+
+  /* Markdown本文 */
+  .md-body {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    line-height: 1.75;
+  }
+  .md-body > *:first-child { margin-top: 0; }
+  .md-body > *:last-child { margin-bottom: 0; }
+  .md-body p { margin: 6px 0; }
+  .md-body ul, .md-body ol { margin: 6px 0; padding-left: 22px; }
+  .md-body li { margin: 2px 0; }
+  .md-body blockquote {
+    margin: 8px 0;
+    padding: 6px 12px;
+    border-left: 3px solid var(--primary);
+    background: #eff6ff;
+    color: var(--text);
+    border-radius: 3px;
+  }
+  .md-body h4, .md-body h5, .md-body h6 {
+    margin: 12px 0 4px; color: var(--primary-dark);
+  }
+  .md-body h4 { font-size: 15px; }
+  .md-body h5 { font-size: 14px; }
+  .md-body code {
+    background: #e5e7eb; padding: 1px 5px;
+    border-radius: 3px; font-size: 0.92em;
+  }
+  .md-body hr {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 12px 0;
+  }
+
+  /* 注意事項: 見出しセクション */
+  .notes-group {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .notes-group-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    background: #f9fafb;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .notes-group-header:hover { background: #f0f3f7; }
+  .notes-group.collapsed .notes-group-header { border-bottom: none; }
+  .notes-group-title { flex: 1; color: var(--primary-dark); }
+  .notes-group.notes-level-1 .notes-group-title { font-size: 16px; }
+  .notes-group.notes-level-3 .notes-group-header {
+    background: #fdfdfd;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  .notes-group.notes-level-3 .notes-group-title {
+    color: #475569;
+  }
+  .notes-group-body {
+    padding: 10px 14px;
+    border: none;
+    background: #fff;
+    border-radius: 0;
+  }
   .actions-row {
     display: flex; gap: 8px;
     margin-top: 24px; padding-top: 16px;
@@ -544,7 +733,8 @@ let state = {
   activeTags: new Set(),
   selectedId: null,
   editingId: null,       // モーダル: null = 新規, それ以外 = 編集対象ID
-  editingSection: null   // インライン編集: { entryId, section: 'title'|'tags'|'flow'|'checklist'|'notes' } | null
+  editingSection: null,  // インライン編集: { entryId, section: 'title'|'tags'|'flow'|'checklist'|'notes' } | null
+  collapsedSections: new Set() // セッション単位: `${entryId}::${kind}::${name}`
 };
 
 function isEditingSection(entryId, section) {
@@ -579,6 +769,181 @@ function cleanHeading(raw) {
   s = s.replace(/（[^（）]*）\s*$/, '').trim();
   s = s.replace(/\([^()]*\)\s*$/, '').trim();
   return s;
+}
+
+// チェックリストを [プレフィックス] で自動グループ化
+function groupChecklistItems(checklist) {
+  const groups = []; // [{name, items:[{text,done,index}]}]
+  const byName = new Map();
+  const NOSEC = '（全般）';
+  (checklist || []).forEach((c, idx) => {
+    const text = c && typeof c.text === 'string' ? c.text : '';
+    const m = text.match(/^\s*\[([^\]]+)\]\s*(.*)$/);
+    const name = m ? m[1].trim() : NOSEC;
+    const itemText = m ? m[2].trim() : text;
+    let g = byName.get(name);
+    if (!g) {
+      g = { name, items: [] };
+      byName.set(name, g);
+      groups.push(g);
+    }
+    g.items.push({ text: itemText, done: !!c.done, index: idx });
+  });
+  return groups;
+}
+
+// ごく簡易のMarkdownインライン装飾（XSSに配慮しエスケープしてから適用）
+function mdEscape(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function mdInline(s) {
+  let out = mdEscape(s);
+  out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/`([^`]+?)`/g, '<code>$1</code>');
+  return out;
+}
+
+// ブロックレベルのMarkdown簡易レンダラ
+function renderMarkdownBody(text) {
+  const frag = document.createDocumentFragment();
+  const lines = (text || '').split(/\r?\n/);
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^\s*---+\s*$/.test(line)) {
+      frag.appendChild(document.createElement('hr'));
+      i++; continue;
+    }
+    if (/^>\s?/.test(line)) {
+      const bq = document.createElement('blockquote');
+      const parts = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) {
+        parts.push(lines[i].replace(/^>\s?/, ''));
+        i++;
+      }
+      bq.innerHTML = mdInline(parts.join('\n')).replace(/\n/g, '<br>');
+      frag.appendChild(bq);
+      continue;
+    }
+    const hMatch = line.match(/^(#{4,6})\s+(.+)$/);
+    if (hMatch) {
+      const h = document.createElement('h' + hMatch[1].length);
+      h.innerHTML = mdInline(hMatch[2]);
+      frag.appendChild(h);
+      i++; continue;
+    }
+    if (/^\s*[-*]\s+/.test(line)) {
+      const ul = document.createElement('ul');
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
+        const li = document.createElement('li');
+        li.innerHTML = mdInline(lines[i].replace(/^\s*[-*]\s+/, ''));
+        ul.appendChild(li);
+        i++;
+      }
+      frag.appendChild(ul);
+      continue;
+    }
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const ol = document.createElement('ol');
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+        const li = document.createElement('li');
+        li.innerHTML = mdInline(lines[i].replace(/^\s*\d+\.\s+/, ''));
+        ol.appendChild(li);
+        i++;
+      }
+      frag.appendChild(ol);
+      continue;
+    }
+    if (line.trim() === '') { i++; continue; }
+    const para = [];
+    while (i < lines.length && lines[i].trim() !== ''
+        && !/^(\s*---+\s*$|>\s?|\s*[-*]\s+|\s*\d+\.\s+|#{1,6}\s)/.test(lines[i])) {
+      para.push(lines[i]); i++;
+    }
+    if (para.length) {
+      const p = document.createElement('p');
+      p.innerHTML = mdInline(para.join('\n')).replace(/\n/g, '<br>');
+      frag.appendChild(p);
+    }
+  }
+  return frag;
+}
+
+// 注意事項を ## / ### の見出しで折り畳みセクション化して描画
+function renderNotesContent(container, text, entryId) {
+  if (!text || !text.trim()) {
+    const empty = document.createElement('div');
+    empty.style.color = 'var(--muted)';
+    empty.style.fontSize = '13px';
+    empty.textContent = '（未入力）';
+    container.appendChild(empty);
+    return;
+  }
+  const lines = text.split(/\r?\n/);
+  const hasHeadings = lines.some(l => /^#{1,3}\s/.test(l));
+  if (!hasHeadings) {
+    const div = document.createElement('div');
+    div.className = 'md-body';
+    div.appendChild(renderMarkdownBody(text));
+    container.appendChild(div);
+    return;
+  }
+  // 先頭 preamble + 各セクション
+  let preamble = [];
+  const sections = [];
+  let current = null;
+  for (const line of lines) {
+    const m = line.match(/^(#{1,3})\s+(.+)$/);
+    if (m) {
+      if (current) sections.push(current);
+      current = { level: m[1].length, heading: m[2].trim(), body: [] };
+    } else if (current) {
+      current.body.push(line);
+    } else {
+      preamble.push(line);
+    }
+  }
+  if (current) sections.push(current);
+  if (preamble.join('').trim()) {
+    const pre = document.createElement('div');
+    pre.className = 'md-body';
+    pre.appendChild(renderMarkdownBody(preamble.join('\n')));
+    container.appendChild(pre);
+  }
+  sections.forEach(sec => {
+    const cleaned = sec.heading
+      .replace(/^[■▪●◆◇○□△▲▼※＊*]+\s*/, '')
+      .trim();
+    const key = `${entryId}::notes::${sec.level}::${cleaned}`;
+    const collapsed = state.collapsedSections.has(key);
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'notes-group notes-level-' + sec.level + (collapsed ? ' collapsed' : '');
+
+    const header = document.createElement('div');
+    header.className = 'notes-group-header';
+    const toggle = document.createElement('span');
+    toggle.className = 'checklist-group-toggle';
+    toggle.textContent = collapsed ? '▶' : '▼';
+    const title = document.createElement('span');
+    title.className = 'notes-group-title';
+    title.textContent = cleaned;
+    header.appendChild(toggle);
+    header.appendChild(title);
+    header.onclick = () => {
+      if (state.collapsedSections.has(key)) state.collapsedSections.delete(key);
+      else state.collapsedSections.add(key);
+      render();
+    };
+    groupDiv.appendChild(header);
+
+    if (!collapsed) {
+      const body = document.createElement('div');
+      body.className = 'md-body notes-group-body';
+      body.appendChild(renderMarkdownBody(sec.body.join('\n')));
+      groupDiv.appendChild(body);
+    }
+    container.appendChild(groupDiv);
+  });
 }
 
 function parseMarkdownChecklist(md, opts) {
@@ -1030,28 +1395,113 @@ function renderChecklistSection(card, entry) {
     sec.appendChild(h3);
 
     if (entry.checklist && entry.checklist.length) {
-      const ul = document.createElement('ul');
-      ul.className = 'checklist';
-      entry.checklist.forEach((c, i) => {
-        const li = document.createElement('li');
-        if (c.done) li.classList.add('done');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = !!c.done;
-        cb.id = `chk-${entry.id}-${i}`;
-        cb.onchange = () => {
-          c.done = cb.checked;
-          saveData(state.data);
+      const total = entry.checklist.length;
+      const done = entry.checklist.filter(c => c.done).length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const allDone = done === total && total > 0;
+
+      // 総合進捗
+      const overall = document.createElement('div');
+      overall.className = 'checklist-overall';
+      const otext = document.createElement('div');
+      otext.className = 'checklist-overall-text';
+      otext.innerHTML = `<strong>${done} / ${total}</strong> 完了 (${pct}%)`;
+      const obar = document.createElement('div');
+      obar.className = 'checklist-overall-bar';
+      const ofill = document.createElement('div');
+      ofill.className = 'checklist-overall-fill' + (allDone ? ' complete' : '');
+      ofill.style.width = pct + '%';
+      obar.appendChild(ofill);
+      overall.appendChild(otext);
+      overall.appendChild(obar);
+      sec.appendChild(overall);
+
+      const groups = groupChecklistItems(entry.checklist);
+
+      // 2グループ以上ある時のみ 全開/全閉 ボタン
+      if (groups.length >= 2) {
+        const gActions = document.createElement('div');
+        gActions.className = 'checklist-global-actions';
+        const expandAll = document.createElement('button');
+        expandAll.textContent = '▼ 全開';
+        expandAll.onclick = () => {
+          groups.forEach(g => {
+            state.collapsedSections.delete(`${entry.id}::checklist::${g.name}`);
+          });
           render();
         };
-        const label = document.createElement('label');
-        label.htmlFor = cb.id;
-        label.textContent = c.text;
-        li.appendChild(cb);
-        li.appendChild(label);
-        ul.appendChild(li);
+        const collapseAll = document.createElement('button');
+        collapseAll.textContent = '▶ 全閉';
+        collapseAll.onclick = () => {
+          groups.forEach(g => {
+            state.collapsedSections.add(`${entry.id}::checklist::${g.name}`);
+          });
+          render();
+        };
+        gActions.appendChild(expandAll);
+        gActions.appendChild(collapseAll);
+        sec.appendChild(gActions);
+      }
+
+      groups.forEach(g => {
+        const key = `${entry.id}::checklist::${g.name}`;
+        const collapsed = state.collapsedSections.has(key);
+        const gDone = g.items.filter(i => i.done).length;
+        const gTotal = g.items.length;
+        const gAllDone = gDone === gTotal && gTotal > 0;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'checklist-group'
+          + (collapsed ? ' collapsed' : '')
+          + (gAllDone ? ' complete' : '');
+
+        const header = document.createElement('div');
+        header.className = 'checklist-group-header';
+        const toggle = document.createElement('span');
+        toggle.className = 'checklist-group-toggle';
+        toggle.textContent = collapsed ? '▶' : '▼';
+        const title = document.createElement('span');
+        title.className = 'checklist-group-title';
+        title.textContent = g.name;
+        const badge = document.createElement('span');
+        badge.className = 'checklist-group-badge';
+        badge.textContent = `${gDone} / ${gTotal}`;
+        header.appendChild(toggle);
+        header.appendChild(title);
+        header.appendChild(badge);
+        header.onclick = () => {
+          if (state.collapsedSections.has(key)) state.collapsedSections.delete(key);
+          else state.collapsedSections.add(key);
+          render();
+        };
+        groupDiv.appendChild(header);
+
+        if (!collapsed) {
+          const ul = document.createElement('ul');
+          ul.className = 'checklist-group-items';
+          g.items.forEach(item => {
+            const li = document.createElement('li');
+            if (item.done) li.classList.add('done');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = item.done;
+            cb.id = `chk-${entry.id}-${item.index}`;
+            cb.onchange = () => {
+              entry.checklist[item.index].done = cb.checked;
+              saveData(state.data);
+              render();
+            };
+            const label = document.createElement('label');
+            label.htmlFor = cb.id;
+            label.textContent = item.text;
+            li.appendChild(cb);
+            li.appendChild(label);
+            ul.appendChild(li);
+          });
+          groupDiv.appendChild(ul);
+        }
+        sec.appendChild(groupDiv);
       });
-      sec.appendChild(ul);
     } else {
       const empty = document.createElement('div');
       empty.style.color = 'var(--muted)';
@@ -1098,18 +1548,7 @@ function renderNotesSection(card, entry) {
     const editBtn = makeIconBtn('✎ 編集', () => startSectionEdit(entry.id, 'notes'));
     h3.appendChild(editBtn);
     sec.appendChild(h3);
-    if (entry.notes && entry.notes.trim()) {
-      const body = document.createElement('div');
-      body.className = 'body-text';
-      body.textContent = entry.notes;
-      sec.appendChild(body);
-    } else {
-      const empty = document.createElement('div');
-      empty.style.color = 'var(--muted)';
-      empty.style.fontSize = '13px';
-      empty.textContent = '（未入力）';
-      sec.appendChild(empty);
-    }
+    renderNotesContent(sec, entry.notes || '', entry.id);
   }
   card.appendChild(sec);
 }
