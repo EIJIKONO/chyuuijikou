@@ -341,6 +341,37 @@
   </div>
 </div>
 
+<!-- チェックリスト一括貼り付けモーダル -->
+<div class="modal-backdrop" id="bulk-paste-modal">
+  <div class="modal">
+    <h2>📋 Markdown一括貼り付け</h2>
+    <div class="form-group">
+      <label>Markdownテキストを貼り付け</label>
+      <textarea id="bp-text" rows="14" placeholder="## ■ Step 1：馬場を読む&#10;- [ ] 今日のこのコース、外が伸びているか&#10;- [ ] 当日のバイアス移行を確認したか"></textarea>
+      <div class="hint">・<code>- [ ]</code> / <code>- [x]</code> の行がチェック項目として取り込まれます<br>・<code>##</code> <code>###</code> の見出しをセクションとして識別します</div>
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="bp-section" checked>
+        セクション見出しを項目の先頭に付ける（例: <code>[Step 1：馬場を読む] ...</code>）
+      </label>
+    </div>
+    <div class="form-group">
+      <label>取り込み方法</label>
+      <label style="display:inline-flex; align-items:center; gap:4px; margin-right: 16px;">
+        <input type="radio" name="bp-mode" value="replace" checked>置き換え
+      </label>
+      <label style="display:inline-flex; align-items:center; gap:4px;">
+        <input type="radio" name="bp-mode" value="append">末尾に追加
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button id="btn-cancel-bp">キャンセル</button>
+      <button class="primary" id="btn-apply-bp">取り込み</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -462,6 +493,50 @@ function normalize(s) {
 
 function splitCsv(s) {
   return (s || '').split(/[,、]/).map(t => t.trim()).filter(Boolean);
+}
+
+// Markdownチェックリストの解析
+function cleanHeading(raw) {
+  let s = raw.replace(/^#+\s*/, '').trim();
+  s = s.replace(/^[■▪●◆◇○□△▲▼※＊*]+\s*/, '');
+  s = s.replace(/（[^（）]*）\s*$/, '').trim();
+  s = s.replace(/\([^()]*\)\s*$/, '').trim();
+  return s;
+}
+
+function parseMarkdownChecklist(md, opts) {
+  const withSection = opts && opts.withSection !== false;
+  const lines = (md || '').split(/\r?\n/);
+  const items = [];
+  let h2 = null, h3 = null;
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (/^###\s/.test(line)) {
+      h3 = cleanHeading(line);
+      continue;
+    }
+    if (/^##\s/.test(line)) {
+      h2 = cleanHeading(line);
+      h3 = null;
+      continue;
+    }
+    if (/^#\s/.test(line)) {
+      h2 = cleanHeading(line);
+      h3 = null;
+      continue;
+    }
+    const m = line.match(/^\s*[-*]\s*\[([ xX])\]\s*(.+)$/);
+    if (m) {
+      const done = /[xX]/.test(m[1]);
+      let text = m[2].trim();
+      if (withSection) {
+        const section = h3 ? (h2 ? `${h2} / ${h3}` : h3) : h2;
+        if (section) text = `[${section}] ${text}`;
+      }
+      items.push({ text, done });
+    }
+  }
+  return items;
 }
 
 function allTags() {
@@ -778,8 +853,9 @@ function renderChecklistSection(card, entry) {
     const ul = document.createElement('ul');
     ul.className = 'checklist-edit-list';
 
-    const addRow = (text = '') => {
+    const addRow = (text = '', done = false) => {
       const li = document.createElement('li');
+      if (done) li.dataset.done = 'true';
       const input = document.createElement('input');
       input.type = 'text';
       input.value = text;
@@ -794,8 +870,13 @@ function renderChecklistSection(card, entry) {
       return input;
     };
 
-    (entry.checklist || []).forEach(c => addRow(c.text));
+    (entry.checklist || []).forEach(c => addRow(c.text, !!c.done));
     area.appendChild(ul);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '6px';
+    btnRow.style.flexWrap = 'wrap';
 
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
@@ -804,7 +885,18 @@ function renderChecklistSection(card, entry) {
       const input = addRow('');
       input.focus();
     };
-    area.appendChild(addBtn);
+    btnRow.appendChild(addBtn);
+
+    const bulkBtn = document.createElement('button');
+    bulkBtn.type = 'button';
+    bulkBtn.textContent = '📋 Markdown一括貼り付け';
+    bulkBtn.onclick = () => openBulkPasteModal(({ items, mode }) => {
+      if (mode === 'replace') ul.innerHTML = '';
+      items.forEach(it => addRow(it.text, it.done));
+    });
+    btnRow.appendChild(bulkBtn);
+
+    area.appendChild(btnRow);
 
     const acts = document.createElement('div');
     acts.className = 'section-edit-actions';
@@ -813,13 +905,17 @@ function renderChecklistSection(card, entry) {
     save.textContent = '保存';
     save.onclick = () => {
       const old = entry.checklist || [];
-      const items = Array.from(ul.querySelectorAll('input[type="text"]'))
-        .map(i => i.value.trim())
-        .filter(Boolean)
-        .map(text => {
+      const items = Array.from(ul.querySelectorAll('li'))
+        .map(li => {
+          const input = li.querySelector('input[type="text"]');
+          if (!input) return null;
+          const text = input.value.trim();
+          if (!text) return null;
           const found = old.find(c => c.text === text);
-          return { text, done: found ? !!found.done : false };
-        });
+          const bulkDone = li.dataset.done === 'true';
+          return { text, done: found ? !!found.done : bulkDone };
+        })
+        .filter(Boolean);
       commitSectionEdit(entry, { checklist: items });
     };
     const cancel = document.createElement('button');
@@ -1048,6 +1144,38 @@ function exportJson() {
   URL.revokeObjectURL(url);
 }
 
+// ===== チェックリスト一括貼り付けモーダル =====
+let bulkPasteOnApply = null;
+
+function openBulkPasteModal(onApply) {
+  bulkPasteOnApply = onApply;
+  document.getElementById('bp-text').value = '';
+  document.getElementById('bp-section').checked = true;
+  const replaceRadio = document.querySelector('input[name="bp-mode"][value="replace"]');
+  if (replaceRadio) replaceRadio.checked = true;
+  document.getElementById('bulk-paste-modal').classList.add('show');
+  setTimeout(() => document.getElementById('bp-text').focus(), 50);
+}
+
+function closeBulkPasteModal() {
+  document.getElementById('bulk-paste-modal').classList.remove('show');
+  bulkPasteOnApply = null;
+}
+
+function applyBulkPaste() {
+  const text = document.getElementById('bp-text').value;
+  const withSection = document.getElementById('bp-section').checked;
+  const modeEl = document.querySelector('input[name="bp-mode"]:checked');
+  const mode = modeEl ? modeEl.value : 'replace';
+  const items = parseMarkdownChecklist(text, { withSection });
+  if (items.length === 0) {
+    alert('「- [ ]」形式のチェック項目が見つかりませんでした');
+    return;
+  }
+  if (bulkPasteOnApply) bulkPasteOnApply({ items, mode });
+  closeBulkPasteModal();
+}
+
 let pendingImportData = null;
 
 function startImport() {
@@ -1143,12 +1271,15 @@ document.getElementById('btn-cancel-import').onclick = () => {
 };
 document.getElementById('btn-import-overwrite').onclick = () => applyImport('overwrite');
 document.getElementById('btn-import-merge').onclick = () => applyImport('merge');
+document.getElementById('btn-cancel-bp').onclick = closeBulkPasteModal;
+document.getElementById('btn-apply-bp').onclick = applyBulkPaste;
 
 // ESCでモーダル／インライン編集を閉じる
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeEditModal();
     document.getElementById('import-modal').classList.remove('show');
+    closeBulkPasteModal();
     if (state.editingSection) {
       state.editingSection = null;
       render();
