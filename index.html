@@ -171,6 +171,50 @@
     border-top: 1px solid var(--border);
   }
 
+  /* インライン編集 */
+  .title-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .title-row h2 { margin: 0; flex: 1; }
+  .icon-btn {
+    font-size: 12px; padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: #fff; color: var(--muted);
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: #f0f3f7; color: var(--text); }
+  .section-actions { display: flex; gap: 6px; }
+  .section-edit-area {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .section-edit-area input[type="text"],
+  .section-edit-area textarea {
+    width: 100%;
+    font-family: inherit; font-size: 14px;
+    padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: #fff;
+    resize: vertical;
+  }
+  .section-edit-area textarea { line-height: 1.7; }
+  .section-edit-actions {
+    display: flex; gap: 6px; justify-content: flex-end;
+    margin-top: 10px;
+  }
+  .edit-hint {
+    font-size: 11px; color: var(--muted); margin-top: 4px;
+  }
+  .tags-row-view {
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
   /* Modal */
   .modal-backdrop {
     position: fixed; inset: 0;
@@ -391,8 +435,25 @@ let state = {
   searchTerm: '',
   activeTags: new Set(),
   selectedId: null,
-  editingId: null  // null = 新規, それ以外 = 編集対象ID
+  editingId: null,       // モーダル: null = 新規, それ以外 = 編集対象ID
+  editingSection: null   // インライン編集: { entryId, section: 'title'|'tags'|'flow'|'checklist'|'notes' } | null
 };
+
+function isEditingSection(entryId, section) {
+  return state.editingSection
+      && state.editingSection.entryId === entryId
+      && state.editingSection.section === section;
+}
+
+function startSectionEdit(entryId, section) {
+  state.editingSection = { entryId, section };
+  render();
+}
+
+function cancelSectionEdit() {
+  state.editingSection = null;
+  render();
+}
 
 // ===== ユーティリティ =====
 function normalize(s) {
@@ -489,6 +550,7 @@ function renderList() {
     }
     item.onclick = () => {
       state.selectedId = e.id;
+      state.editingSection = null;
       render();
     };
     container.appendChild(item);
@@ -504,6 +566,7 @@ function renderDetail() {
   if (!entry || !list.find(e => e.id === entry.id)) {
     entry = list[0];
     state.selectedId = entry ? entry.id : null;
+    state.editingSection = null;
   }
   if (!entry) {
     container.innerHTML = '<div class="empty">左のリストからナレッジを選択してください<br><br>または「＋新規追加」から登録できます。</div>';
@@ -512,94 +575,361 @@ function renderDetail() {
   const card = document.createElement('div');
   card.className = 'detail-card';
 
-  const h2 = document.createElement('h2');
-  h2.textContent = entry.title;
-  card.appendChild(h2);
+  renderTitleSection(card, entry);
+  renderTagsSection(card, entry);
+  renderFlowSection(card, entry);
+  renderChecklistSection(card, entry);
+  renderNotesSection(card, entry);
+  renderActionsRow(card, entry);
 
-  if (entry.tags && entry.tags.length) {
-    const tagsDiv = document.createElement('div');
-    tagsDiv.className = 'detail-tags';
-    entry.tags.forEach(t => {
-      const c = document.createElement('span');
-      c.className = 'chip readonly';
-      c.textContent = t;
-      tagsDiv.appendChild(c);
+  container.appendChild(card);
+}
+
+function commitSectionEdit(entry, patch) {
+  Object.assign(entry, patch);
+  entry.updatedAt = new Date().toISOString();
+  state.editingSection = null;
+  saveData(state.data);
+  render();
+}
+
+function makeIconBtn(label, onClick) {
+  const b = document.createElement('button');
+  b.className = 'icon-btn';
+  b.type = 'button';
+  b.textContent = label;
+  b.onclick = onClick;
+  return b;
+}
+
+// --- タイトル ---
+function renderTitleSection(card, entry) {
+  const row = document.createElement('div');
+  row.className = 'title-row';
+  if (isEditingSection(entry.id, 'title')) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = entry.title;
+    input.style.flex = '1';
+    input.style.fontSize = '20px';
+    input.style.padding = '6px 10px';
+    input.style.border = '1px solid var(--border)';
+    input.style.borderRadius = '6px';
+    const save = makeIconBtn('保存', () => {
+      const v = input.value.trim();
+      if (!v) { alert('タイトルは必須です'); return; }
+      commitSectionEdit(entry, { title: v });
     });
-    card.appendChild(tagsDiv);
+    save.classList.add('primary');
+    save.style.color = '#fff';
+    save.style.background = 'var(--primary)';
+    save.style.borderColor = 'var(--primary)';
+    const cancel = makeIconBtn('キャンセル', cancelSectionEdit);
+    row.appendChild(input);
+    const actions = document.createElement('div');
+    actions.className = 'section-actions';
+    actions.appendChild(save);
+    actions.appendChild(cancel);
+    row.appendChild(actions);
+    setTimeout(() => input.focus(), 0);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') save.click();
+      if (e.key === 'Escape') cancelSectionEdit();
+    });
+  } else {
+    const h2 = document.createElement('h2');
+    h2.textContent = entry.title;
+    row.appendChild(h2);
+    row.appendChild(makeIconBtn('✎ 編集', () => startSectionEdit(entry.id, 'title')));
   }
+  card.appendChild(row);
+}
 
-  // フロー
-  if (entry.flow && entry.flow.trim()) {
-    const sec = document.createElement('section');
-    const h3 = document.createElement('h3');
-    h3.textContent = '【業務フロー】';
+// --- タグ ---
+function renderTagsSection(card, entry) {
+  const row = document.createElement('div');
+  row.className = 'tags-row-view';
+  if (isEditingSection(entry.id, 'tags')) {
+    const area = document.createElement('div');
+    area.className = 'section-edit-area';
+    area.style.width = '100%';
+    const label = document.createElement('div');
+    label.className = 'edit-hint';
+    label.textContent = 'タグ（カンマ区切り）';
+    area.appendChild(label);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = (entry.tags || []).join(', ');
+    area.appendChild(input);
+
+    const kwLabel = document.createElement('div');
+    kwLabel.className = 'edit-hint';
+    kwLabel.style.marginTop = '8px';
+    kwLabel.textContent = 'キーワード（カンマ区切り・別名でヒットさせたい語）';
+    area.appendChild(kwLabel);
+    const kwInput = document.createElement('input');
+    kwInput.type = 'text';
+    kwInput.value = (entry.keywords || []).join(', ');
+    area.appendChild(kwInput);
+
+    const acts = document.createElement('div');
+    acts.className = 'section-edit-actions';
+    const save = document.createElement('button');
+    save.className = 'primary';
+    save.textContent = '保存';
+    save.onclick = () => commitSectionEdit(entry, {
+      tags: splitCsv(input.value),
+      keywords: splitCsv(kwInput.value)
+    });
+    const cancel = document.createElement('button');
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = cancelSectionEdit;
+    acts.appendChild(cancel);
+    acts.appendChild(save);
+    area.appendChild(acts);
+    row.appendChild(area);
+    setTimeout(() => input.focus(), 0);
+  } else {
+    if (entry.tags && entry.tags.length) {
+      entry.tags.forEach(t => {
+        const c = document.createElement('span');
+        c.className = 'chip readonly';
+        c.textContent = t;
+        row.appendChild(c);
+      });
+    } else {
+      const empty = document.createElement('span');
+      empty.style.color = 'var(--muted)';
+      empty.style.fontSize = '12px';
+      empty.textContent = '（タグなし）';
+      row.appendChild(empty);
+    }
+    row.appendChild(makeIconBtn('✎ タグ／キーワード編集', () => startSectionEdit(entry.id, 'tags')));
+  }
+  card.appendChild(row);
+}
+
+// --- 業務フロー ---
+function renderFlowSection(card, entry) {
+  const sec = document.createElement('section');
+  const h3 = document.createElement('h3');
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = '【業務フロー】';
+  h3.appendChild(titleSpan);
+
+  if (isEditingSection(entry.id, 'flow')) {
     sec.appendChild(h3);
-    const body = document.createElement('div');
-    body.className = 'body-text';
-    body.textContent = entry.flow;
-    sec.appendChild(body);
-    card.appendChild(sec);
+    const area = document.createElement('div');
+    area.className = 'section-edit-area';
+    const ta = document.createElement('textarea');
+    ta.rows = 8;
+    ta.value = entry.flow || '';
+    ta.placeholder = '1. 事前に図面を確認\n2. 現場到着後、責任者と挨拶';
+    area.appendChild(ta);
+    const acts = document.createElement('div');
+    acts.className = 'section-edit-actions';
+    const save = document.createElement('button');
+    save.className = 'primary';
+    save.textContent = '保存';
+    save.onclick = () => commitSectionEdit(entry, { flow: ta.value });
+    const cancel = document.createElement('button');
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = cancelSectionEdit;
+    acts.appendChild(cancel);
+    acts.appendChild(save);
+    area.appendChild(acts);
+    sec.appendChild(area);
+    setTimeout(() => ta.focus(), 0);
+  } else {
+    const editBtn = makeIconBtn('✎ 編集', () => startSectionEdit(entry.id, 'flow'));
+    h3.appendChild(editBtn);
+    sec.appendChild(h3);
+    if (entry.flow && entry.flow.trim()) {
+      const body = document.createElement('div');
+      body.className = 'body-text';
+      body.textContent = entry.flow;
+      sec.appendChild(body);
+    } else {
+      const empty = document.createElement('div');
+      empty.style.color = 'var(--muted)';
+      empty.style.fontSize = '13px';
+      empty.textContent = '（未入力）';
+      sec.appendChild(empty);
+    }
   }
+  card.appendChild(sec);
+}
 
-  // チェックリスト
-  if (entry.checklist && entry.checklist.length) {
-    const sec = document.createElement('section');
-    const h3 = document.createElement('h3');
-    h3.innerHTML = '<span>【チェックリスト】</span>';
-    const resetBtn = document.createElement('button');
-    resetBtn.textContent = 'リセット';
-    resetBtn.onclick = () => {
-      entry.checklist.forEach(c => c.done = false);
+// --- チェックリスト ---
+function renderChecklistSection(card, entry) {
+  const sec = document.createElement('section');
+  const h3 = document.createElement('h3');
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = '【チェックリスト】';
+  h3.appendChild(titleSpan);
+  const actions = document.createElement('div');
+  actions.className = 'section-actions';
+
+  if (isEditingSection(entry.id, 'checklist')) {
+    h3.appendChild(actions);
+    sec.appendChild(h3);
+    const area = document.createElement('div');
+    area.className = 'section-edit-area';
+    const ul = document.createElement('ul');
+    ul.className = 'checklist-edit-list';
+
+    const addRow = (text = '') => {
+      const li = document.createElement('li');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = text;
+      input.placeholder = 'チェック項目';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.textContent = '×';
+      del.onclick = () => li.remove();
+      li.appendChild(input);
+      li.appendChild(del);
+      ul.appendChild(li);
+      return input;
+    };
+
+    (entry.checklist || []).forEach(c => addRow(c.text));
+    area.appendChild(ul);
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '＋ 項目追加';
+    addBtn.onclick = () => {
+      const input = addRow('');
+      input.focus();
+    };
+    area.appendChild(addBtn);
+
+    const acts = document.createElement('div');
+    acts.className = 'section-edit-actions';
+    const save = document.createElement('button');
+    save.className = 'primary';
+    save.textContent = '保存';
+    save.onclick = () => {
+      const old = entry.checklist || [];
+      const items = Array.from(ul.querySelectorAll('input[type="text"]'))
+        .map(i => i.value.trim())
+        .filter(Boolean)
+        .map(text => {
+          const found = old.find(c => c.text === text);
+          return { text, done: found ? !!found.done : false };
+        });
+      commitSectionEdit(entry, { checklist: items });
+    };
+    const cancel = document.createElement('button');
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = cancelSectionEdit;
+    acts.appendChild(cancel);
+    acts.appendChild(save);
+    area.appendChild(acts);
+    sec.appendChild(area);
+  } else {
+    const resetBtn = makeIconBtn('リセット', () => {
+      (entry.checklist || []).forEach(c => c.done = false);
       saveData(state.data);
       render();
-    };
-    h3.appendChild(resetBtn);
-    sec.appendChild(h3);
-    const ul = document.createElement('ul');
-    ul.className = 'checklist';
-    entry.checklist.forEach((c, i) => {
-      const li = document.createElement('li');
-      if (c.done) li.classList.add('done');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !!c.done;
-      cb.id = `chk-${entry.id}-${i}`;
-      cb.onchange = () => {
-        c.done = cb.checked;
-        saveData(state.data);
-        render();
-      };
-      const label = document.createElement('label');
-      label.htmlFor = cb.id;
-      label.textContent = c.text;
-      li.appendChild(cb);
-      li.appendChild(label);
-      ul.appendChild(li);
     });
-    sec.appendChild(ul);
-    card.appendChild(sec);
-  }
-
-  // 注意事項
-  if (entry.notes && entry.notes.trim()) {
-    const sec = document.createElement('section');
-    const h3 = document.createElement('h3');
-    h3.textContent = '【注意事項】';
+    const editBtn = makeIconBtn('✎ 編集', () => startSectionEdit(entry.id, 'checklist'));
+    actions.appendChild(resetBtn);
+    actions.appendChild(editBtn);
+    h3.appendChild(actions);
     sec.appendChild(h3);
-    const body = document.createElement('div');
-    body.className = 'body-text';
-    body.textContent = entry.notes;
-    sec.appendChild(body);
-    card.appendChild(sec);
-  }
 
-  // アクション
+    if (entry.checklist && entry.checklist.length) {
+      const ul = document.createElement('ul');
+      ul.className = 'checklist';
+      entry.checklist.forEach((c, i) => {
+        const li = document.createElement('li');
+        if (c.done) li.classList.add('done');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!c.done;
+        cb.id = `chk-${entry.id}-${i}`;
+        cb.onchange = () => {
+          c.done = cb.checked;
+          saveData(state.data);
+          render();
+        };
+        const label = document.createElement('label');
+        label.htmlFor = cb.id;
+        label.textContent = c.text;
+        li.appendChild(cb);
+        li.appendChild(label);
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+    } else {
+      const empty = document.createElement('div');
+      empty.style.color = 'var(--muted)';
+      empty.style.fontSize = '13px';
+      empty.textContent = '（項目なし）';
+      sec.appendChild(empty);
+    }
+  }
+  card.appendChild(sec);
+}
+
+// --- 注意事項 ---
+function renderNotesSection(card, entry) {
+  const sec = document.createElement('section');
+  const h3 = document.createElement('h3');
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = '【注意事項】';
+  h3.appendChild(titleSpan);
+
+  if (isEditingSection(entry.id, 'notes')) {
+    sec.appendChild(h3);
+    const area = document.createElement('div');
+    area.className = 'section-edit-area';
+    const ta = document.createElement('textarea');
+    ta.rows = 6;
+    ta.value = entry.notes || '';
+    ta.placeholder = '・15分前到着厳守\n・名刺切れに注意';
+    area.appendChild(ta);
+    const acts = document.createElement('div');
+    acts.className = 'section-edit-actions';
+    const save = document.createElement('button');
+    save.className = 'primary';
+    save.textContent = '保存';
+    save.onclick = () => commitSectionEdit(entry, { notes: ta.value });
+    const cancel = document.createElement('button');
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = cancelSectionEdit;
+    acts.appendChild(cancel);
+    acts.appendChild(save);
+    area.appendChild(acts);
+    sec.appendChild(area);
+    setTimeout(() => ta.focus(), 0);
+  } else {
+    const editBtn = makeIconBtn('✎ 編集', () => startSectionEdit(entry.id, 'notes'));
+    h3.appendChild(editBtn);
+    sec.appendChild(h3);
+    if (entry.notes && entry.notes.trim()) {
+      const body = document.createElement('div');
+      body.className = 'body-text';
+      body.textContent = entry.notes;
+      sec.appendChild(body);
+    } else {
+      const empty = document.createElement('div');
+      empty.style.color = 'var(--muted)';
+      empty.style.fontSize = '13px';
+      empty.textContent = '（未入力）';
+      sec.appendChild(empty);
+    }
+  }
+  card.appendChild(sec);
+}
+
+// --- アクション（削除のみ。各セクションはインライン編集） ---
+function renderActionsRow(card, entry) {
   const actions = document.createElement('div');
   actions.className = 'actions-row';
-  const editBtn = document.createElement('button');
-  editBtn.className = 'primary';
-  editBtn.textContent = '編集';
-  editBtn.onclick = () => openEditModal(entry.id);
   const delBtn = document.createElement('button');
   delBtn.className = 'danger';
   delBtn.textContent = '削除';
@@ -607,15 +937,13 @@ function renderDetail() {
     if (confirm(`「${entry.title}」を削除しますか？\nこの操作は取り消せません。`)) {
       state.data.entries = state.data.entries.filter(e => e.id !== entry.id);
       state.selectedId = null;
+      state.editingSection = null;
       saveData(state.data);
       render();
     }
   };
-  actions.appendChild(editBtn);
   actions.appendChild(delBtn);
   card.appendChild(actions);
-
-  container.appendChild(card);
 }
 
 // ===== 編集モーダル =====
@@ -816,11 +1144,15 @@ document.getElementById('btn-cancel-import').onclick = () => {
 document.getElementById('btn-import-overwrite').onclick = () => applyImport('overwrite');
 document.getElementById('btn-import-merge').onclick = () => applyImport('merge');
 
-// ESCでモーダルを閉じる
+// ESCでモーダル／インライン編集を閉じる
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeEditModal();
     document.getElementById('import-modal').classList.remove('show');
+    if (state.editingSection) {
+      state.editingSection = null;
+      render();
+    }
   }
 });
 
