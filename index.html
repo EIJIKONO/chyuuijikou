@@ -397,6 +397,57 @@
     border-top: 1px solid var(--border);
   }
 
+  /* 競馬場タブ */
+  .course-tabs {
+    display: flex; gap: 4px;
+    overflow-x: auto;
+    padding: 4px 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .course-tab {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .course-tab:hover { background: #f0f3f7; color: var(--text); }
+  .course-tab.active {
+    background: var(--primary-dark, #2563eb);
+    border-color: var(--primary-dark, #2563eb);
+    color: #fff;
+    font-weight: 600;
+  }
+  .course-tab-add {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .course-tab-add:hover { background: #f0f3f7; color: var(--text); }
+  .course-progress {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .course-empty {
+    padding: 14px;
+    color: var(--muted); font-size: 13px;
+    background: #fafbfc;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    text-align: center;
+  }
+
   /* インライン編集 */
   .title-row {
     display: flex; align-items: center; gap: 8px;
@@ -560,7 +611,7 @@
       <input type="text" id="f-tags" placeholder="例：販売店, 現場, 新規">
     </div>
     <div class="form-group">
-      <label>業務フロー（手順を改行で区切って入力）</label>
+      <label>フロー（手順を改行で区切って入力）</label>
       <textarea id="f-flow" rows="6" placeholder="1. 事前に図面を確認&#10;2. 現場到着後、責任者と挨拶"></textarea>
     </div>
     <div class="form-group">
@@ -643,44 +694,26 @@
 
 // ===== データレイヤー =====
 const STORAGE_KEY = 'noticeAppData';
-const DATA_VERSION = 1;
+const DATA_VERSION = 2;
+
+const JRA_COURSES = ['札幌', '函館', '福島', '新潟', '東京', '中山', '中京', '京都', '阪神', '小倉'];
+function defaultCourses() {
+  return JRA_COURSES.map(name => ({ name, checklist: [] }));
+}
+function ensureCourses(entry) {
+  if (!Array.isArray(entry.courses)) entry.courses = defaultCourses();
+  entry.courses = entry.courses.map(c => ({
+    name: (c && c.name) ? String(c.name) : '(無題)',
+    checklist: Array.isArray(c && c.checklist)
+      ? c.checklist.map(x => ({ text: String(x.text || ''), done: !!x.done }))
+      : []
+  }));
+  return entry;
+}
 
 const SAMPLE_DATA = {
   version: DATA_VERSION,
   entries: [
-    {
-      id: crypto.randomUUID(),
-      title: '現場立会い',
-      keywords: ['現場', '立会', '立ち会い', '現調'],
-      tags: ['販売店', '現場', '新規'],
-      flow: '1. 事前に図面・仕様書を確認\n2. 出発前に必要備品を再確認（名刺・図面・メジャー・カメラ）\n3. 現場到着15分前を目標に到着\n4. 責任者へ挨拶、本日の流れを確認\n5. 立会内容を記録（写真・メモ）\n6. 帰社後、報告書を当日中に作成',
-      checklist: [
-        { text: '名刺を3枚以上携帯', done: false },
-        { text: '図面コピーを持参', done: false },
-        { text: 'メジャー・カメラ', done: false },
-        { text: '車両ガソリン残量確認', done: false },
-        { text: '訪問先の連絡先を控える', done: false }
-      ],
-      notes: '・15分前到着厳守\n・写真は必ず広角／部分の2枚撮る\n・現場で約束した内容は必ず議事メモに残す\n・帰社後の報告は当日中（翌日NG）',
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: crypto.randomUUID(),
-      title: '契約書チェック',
-      keywords: ['契約', '契約書', 'サイン', '締結'],
-      tags: ['販売店', '契約', '事務'],
-      flow: '1. 契約書テンプレートと差分を比較\n2. 金額・支払条件・納期を再確認\n3. お客様情報（社名・住所・代表者）を登記情報と照合\n4. 上長の承認印取得\n5. 製本・捺印\n6. 控えのスキャンと保管',
-      checklist: [
-        { text: '金額（税込・税抜）の整合', done: false },
-        { text: '支払サイト・支払方法', done: false },
-        { text: '納期', done: false },
-        { text: '甲乙の表記', done: false },
-        { text: '住所・代表者名の正確性', done: false },
-        { text: '収入印紙の要否確認', done: false }
-      ],
-      notes: '・金額は必ず2人以上でクロスチェック\n・捺印前に必ず上長承認\n・原本は鍵付きキャビネット保管',
-      updatedAt: new Date().toISOString()
-    },
     {
       id: crypto.randomUUID(),
       title: '競馬予想',
@@ -701,6 +734,7 @@ const SAMPLE_DATA = {
         { text: '締切時刻に余裕を持って投票した', done: false }
       ],
       notes: '・予算は厳守。負けが込んでも追加入金しない\n・1日の上限を決めて、超えたら即撤退\n・1レース全張り禁止、複数レースに分散\n・「絶対」は競馬にない。常に外れる前提で配分\n・直前で気配が悪いと感じたら見送る勇気\n・体調不良・飲酒時・感情が乱れている時は予想しない\n・当たり分の70%は引き出して再投資に回さない\n・人気馬を切る判断は明確な根拠があるときだけ\n・血統・ローテはあくまで補助情報、現状の状態優先',
+      courses: defaultCourses(),
       updatedAt: new Date().toISOString()
     }
   ]
@@ -715,6 +749,18 @@ function loadData() {
     }
     const parsed = JSON.parse(raw);
     if (!parsed.entries) throw new Error('invalid');
+    // DATA_VERSION が上がったら初期サンプルで上書き
+    if ((parsed.version || 0) < DATA_VERSION) {
+      saveData(SAMPLE_DATA);
+      return SAMPLE_DATA;
+    }
+    // 競馬場タブの構造補完（旧データ互換）
+    let migrated = false;
+    parsed.entries.forEach(e => {
+      if (!Array.isArray(e.courses)) migrated = true;
+      ensureCourses(e);
+    });
+    if (migrated) saveData(parsed);
     return parsed;
   } catch {
     saveData(SAMPLE_DATA);
@@ -733,9 +779,21 @@ let state = {
   activeTags: new Set(),
   selectedId: null,
   editingId: null,       // モーダル: null = 新規, それ以外 = 編集対象ID
-  editingSection: null,  // インライン編集: { entryId, section: 'title'|'tags'|'flow'|'checklist'|'notes' } | null
-  collapsedSections: new Set() // セッション単位: `${entryId}::${kind}::${name}`
+  editingSection: null,  // インライン編集: { entryId, section: 'title'|'tags'|'flow'|'checklist'|'notes'|`course:${i}` } | null
+  collapsedSections: new Set(), // セッション単位: `${entryId}::${kind}::${name}`
+  selectedCourseIndexByEntry: {} // { entryId: number } - タブ選択状態
 };
+
+function getCourseIndex(entry) {
+  ensureCourses(entry);
+  if (entry.courses.length === 0) return -1;
+  const stored = state.selectedCourseIndexByEntry[entry.id];
+  if (typeof stored === 'number' && stored >= 0 && stored < entry.courses.length) return stored;
+  return 0;
+}
+function setCourseIndex(entry, idx) {
+  state.selectedCourseIndexByEntry[entry.id] = idx;
+}
 
 function isEditingSection(entryId, section) {
   return state.editingSection
@@ -1111,6 +1169,7 @@ function renderDetail() {
   renderTagsSection(card, entry);
   renderFlowSection(card, entry);
   renderChecklistSection(card, entry);
+  renderCoursesSection(card, entry);
   renderNotesSection(card, entry);
   renderActionsRow(card, entry);
 
@@ -1241,12 +1300,12 @@ function renderTagsSection(card, entry) {
   card.appendChild(row);
 }
 
-// --- 業務フロー ---
+// --- フロー ---
 function renderFlowSection(card, entry) {
   const sec = document.createElement('section');
   const h3 = document.createElement('h3');
   const titleSpan = document.createElement('span');
-  titleSpan.textContent = '【業務フロー】';
+  titleSpan.textContent = '【フロー】';
   h3.appendChild(titleSpan);
 
   if (isEditingSection(entry.id, 'flow')) {
@@ -1344,12 +1403,30 @@ function renderChecklistSection(card, entry) {
     };
     btnRow.appendChild(addBtn);
 
+    // 現在のUL状態からチェックリスト配列を組み立てる
+    const collectItems = () => {
+      const old = entry.checklist || [];
+      return Array.from(ul.querySelectorAll('li'))
+        .map(li => {
+          const input = li.querySelector('input[type="text"]');
+          if (!input) return null;
+          const text = input.value.trim();
+          if (!text) return null;
+          const found = old.find(c => c.text === text);
+          const bulkDone = li.dataset.done === 'true';
+          return { text, done: found ? !!found.done : bulkDone };
+        })
+        .filter(Boolean);
+    };
+
     const bulkBtn = document.createElement('button');
     bulkBtn.type = 'button';
     bulkBtn.textContent = '📋 Markdown一括貼り付け';
     bulkBtn.onclick = () => openBulkPasteModal(({ items, mode }) => {
       if (mode === 'replace') ul.innerHTML = '';
       items.forEach(it => addRow(it.text, it.done));
+      // 取り込んだ瞬間に全体保存（保存押し忘れによる消失を防ぐ）
+      commitSectionEdit(entry, { checklist: collectItems() });
     });
     btnRow.appendChild(bulkBtn);
 
@@ -1361,19 +1438,7 @@ function renderChecklistSection(card, entry) {
     save.className = 'primary';
     save.textContent = '保存';
     save.onclick = () => {
-      const old = entry.checklist || [];
-      const items = Array.from(ul.querySelectorAll('li'))
-        .map(li => {
-          const input = li.querySelector('input[type="text"]');
-          if (!input) return null;
-          const text = input.value.trim();
-          if (!text) return null;
-          const found = old.find(c => c.text === text);
-          const bulkDone = li.dataset.done === 'true';
-          return { text, done: found ? !!found.done : bulkDone };
-        })
-        .filter(Boolean);
-      commitSectionEdit(entry, { checklist: items });
+      commitSectionEdit(entry, { checklist: collectItems() });
     };
     const cancel = document.createElement('button');
     cancel.textContent = 'キャンセル';
@@ -1510,6 +1575,245 @@ function renderChecklistSection(card, entry) {
       sec.appendChild(empty);
     }
   }
+  card.appendChild(sec);
+}
+
+// --- 競馬場別チェックリスト ---
+function renderCoursesSection(card, entry) {
+  ensureCourses(entry);
+  const sec = document.createElement('section');
+  const h3 = document.createElement('h3');
+  h3.textContent = '【競馬場別チェックリスト】';
+  sec.appendChild(h3);
+
+  // タブ行
+  const curIdx = getCourseIndex(entry);
+  const tabs = document.createElement('div');
+  tabs.className = 'course-tabs';
+  entry.courses.forEach((course, idx) => {
+    const total = course.checklist.length;
+    const done = course.checklist.filter(c => c.done).length;
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'course-tab' + (idx === curIdx ? ' active' : '');
+    tab.textContent = total > 0 ? `${course.name} ${done}/${total}` : course.name;
+    tab.onclick = () => {
+      setCourseIndex(entry, idx);
+      render();
+    };
+    tabs.appendChild(tab);
+  });
+  const addTab = document.createElement('button');
+  addTab.type = 'button';
+  addTab.className = 'course-tab-add';
+  addTab.textContent = '＋ 競馬場';
+  addTab.onclick = () => {
+    const name = (prompt('競馬場名') || '').trim();
+    if (!name) return;
+    entry.courses.push({ name, checklist: [] });
+    setCourseIndex(entry, entry.courses.length - 1);
+    entry.updatedAt = new Date().toISOString();
+    saveData(state.data);
+    render();
+  };
+  tabs.appendChild(addTab);
+  sec.appendChild(tabs);
+
+  if (curIdx < 0) {
+    const empty = document.createElement('div');
+    empty.className = 'course-empty';
+    empty.textContent = 'タブがまだありません。「＋ 競馬場」から追加してください。';
+    sec.appendChild(empty);
+    card.appendChild(sec);
+    return;
+  }
+
+  const course = entry.courses[curIdx];
+  const sectionKey = `course:${curIdx}`;
+
+  if (isEditingSection(entry.id, sectionKey)) {
+    // --- 編集モード ---
+    const area = document.createElement('div');
+    area.className = 'section-edit-area';
+
+    // 名前編集
+    const nameRow = document.createElement('div');
+    nameRow.style.display = 'flex';
+    nameRow.style.gap = '8px';
+    nameRow.style.alignItems = 'center';
+    nameRow.style.marginBottom = '10px';
+    const nameLabel = document.createElement('span');
+    nameLabel.style.fontSize = '12px';
+    nameLabel.style.color = 'var(--muted)';
+    nameLabel.style.minWidth = '80px';
+    nameLabel.textContent = '競馬場名';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = course.name;
+    nameInput.style.flex = '1';
+    nameRow.appendChild(nameLabel);
+    nameRow.appendChild(nameInput);
+    area.appendChild(nameRow);
+
+    // チェック項目リスト編集
+    const ul = document.createElement('ul');
+    ul.className = 'checklist-edit-list';
+    const addRow = (text = '', done = false) => {
+      const li = document.createElement('li');
+      if (done) li.dataset.done = 'true';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = text;
+      inp.placeholder = 'チェック項目';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.textContent = '×';
+      del.onclick = () => li.remove();
+      li.appendChild(inp);
+      li.appendChild(del);
+      ul.appendChild(li);
+      return inp;
+    };
+    (course.checklist || []).forEach(c => addRow(c.text, !!c.done));
+    area.appendChild(ul);
+
+    const collectItems = () => {
+      const old = course.checklist || [];
+      return Array.from(ul.querySelectorAll('li'))
+        .map(li => {
+          const inp = li.querySelector('input[type="text"]');
+          if (!inp) return null;
+          const t = inp.value.trim();
+          if (!t) return null;
+          const found = old.find(c => c.text === t);
+          const bulkDone = li.dataset.done === 'true';
+          return { text: t, done: found ? !!found.done : bulkDone };
+        })
+        .filter(Boolean);
+    };
+
+    const commitCourse = (updates) => {
+      Object.assign(course, updates);
+      entry.updatedAt = new Date().toISOString();
+      state.editingSection = null;
+      saveData(state.data);
+      render();
+    };
+
+    // ボタン行
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '6px';
+    btnRow.style.flexWrap = 'wrap';
+    btnRow.style.marginTop = '8px';
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '＋ 項目追加';
+    addBtn.onclick = () => addRow('').focus();
+    btnRow.appendChild(addBtn);
+
+    const bulkBtn = document.createElement('button');
+    bulkBtn.type = 'button';
+    bulkBtn.textContent = '📋 Markdown一括貼り付け';
+    bulkBtn.onclick = () => openBulkPasteModal(({ items, mode }) => {
+      if (mode === 'replace') ul.innerHTML = '';
+      items.forEach(it => addRow(it.text, it.done));
+      // 貼り付けた瞬間に全体保存
+      commitCourse({
+        name: nameInput.value.trim() || course.name,
+        checklist: collectItems()
+      });
+    });
+    btnRow.appendChild(bulkBtn);
+    area.appendChild(btnRow);
+
+    // アクション行（保存／キャンセル／削除）
+    const acts = document.createElement('div');
+    acts.className = 'section-edit-actions';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '🗑️ このタブを削除';
+    delBtn.style.marginRight = 'auto';
+    delBtn.onclick = () => {
+      if (!confirm(`タブ「${course.name}」を削除しますか？チェック項目もすべて消えます。`)) return;
+      entry.courses.splice(curIdx, 1);
+      setCourseIndex(entry, Math.max(0, curIdx - 1));
+      entry.updatedAt = new Date().toISOString();
+      state.editingSection = null;
+      saveData(state.data);
+      render();
+    };
+    const cancel = document.createElement('button');
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = cancelSectionEdit;
+    const save = document.createElement('button');
+    save.className = 'primary';
+    save.textContent = '保存';
+    save.onclick = () => commitCourse({
+      name: nameInput.value.trim() || course.name,
+      checklist: collectItems()
+    });
+    acts.appendChild(delBtn);
+    acts.appendChild(cancel);
+    acts.appendChild(save);
+    area.appendChild(acts);
+    sec.appendChild(area);
+  } else {
+    // --- 表示モード ---
+    const headerRow = document.createElement('div');
+    headerRow.style.display = 'flex';
+    headerRow.style.justifyContent = 'flex-end';
+    headerRow.style.gap = '6px';
+    headerRow.style.marginBottom = '6px';
+    const resetBtn = makeIconBtn('リセット', () => {
+      course.checklist.forEach(c => c.done = false);
+      saveData(state.data);
+      render();
+    });
+    const editBtn = makeIconBtn('✎ 編集', () => startSectionEdit(entry.id, sectionKey));
+    headerRow.appendChild(resetBtn);
+    headerRow.appendChild(editBtn);
+    sec.appendChild(headerRow);
+
+    const total = course.checklist.length;
+    const done = course.checklist.filter(c => c.done).length;
+    if (total > 0) {
+      const pct = Math.round((done / total) * 100);
+      const prog = document.createElement('div');
+      prog.className = 'course-progress';
+      prog.textContent = `${course.name} — ${done} / ${total} 完了 (${pct}%)`;
+      sec.appendChild(prog);
+
+      const ul = document.createElement('ul');
+      ul.className = 'checklist';
+      course.checklist.forEach((item, i) => {
+        const li = document.createElement('li');
+        if (item.done) li.classList.add('done');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = item.done;
+        cb.id = `course-chk-${entry.id}-${curIdx}-${i}`;
+        cb.onchange = () => {
+          course.checklist[i].done = cb.checked;
+          saveData(state.data);
+          render();
+        };
+        const label = document.createElement('label');
+        label.htmlFor = cb.id;
+        label.textContent = item.text;
+        li.appendChild(cb);
+        li.appendChild(label);
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'course-empty';
+      empty.textContent = `「${course.name}」のチェック項目はまだありません。「✎ 編集」から追加してください。`;
+      sec.appendChild(empty);
+    }
+  }
+
   card.appendChild(sec);
 }
 
