@@ -294,6 +294,30 @@
   .checklist-edit-list li button {
     padding: 4px 10px; color: var(--danger); border-color: var(--border);
   }
+
+  .tag-manage-list {
+    list-style: none; padding: 0; margin: 0;
+    max-height: 50vh; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .tag-manage-list li {
+    display: flex; gap: 4px; align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tag-manage-list li:last-child { border-bottom: none; }
+  .tag-manage-list li.deleted input[type="text"] {
+    text-decoration: line-through; opacity: 0.5;
+  }
+  .tag-manage-list li input[type="text"] {
+    flex: 1;
+    padding: 5px 8px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 4px;
+  }
+  .tag-manage-list li button {
+    padding: 3px 8px; font-size: 13px;
+    min-width: 32px;
+  }
   .modal-actions {
     display: flex; gap: 8px; justify-content: flex-end;
     margin-top: 20px; padding-top: 16px;
@@ -375,6 +399,21 @@
       <button id="btn-cancel-import">キャンセル</button>
       <button id="btn-import-merge">マージ（新しい方を採用）</button>
       <button class="primary" id="btn-import-overwrite">上書き</button>
+    </div>
+  </div>
+</div>
+
+<!-- タグ管理モーダル -->
+<div class="modal-backdrop" id="tag-manage-modal">
+  <div class="modal" style="max-width: 520px;">
+    <h2>⚙ タグ管理</h2>
+    <p style="font-size: 12px; color: var(--muted); margin: 0 0 12px;">
+      タグの名前変更・並び替え・削除ができます。変更はすべてのエントリに反映されます。
+    </p>
+    <ul class="tag-manage-list" id="tag-manage-list"></ul>
+    <div class="modal-actions">
+      <button id="btn-cancel-tag-manage">キャンセル</button>
+      <button class="primary" id="btn-save-tag-manage">保存</button>
     </div>
   </div>
 </div>
@@ -580,7 +619,10 @@ function parseMarkdownChecklist(md, opts) {
 function allTags() {
   const set = new Set();
   state.data.entries.forEach(e => (e.tags || []).forEach(t => set.add(t)));
-  return Array.from(set).sort();
+  const order = Array.isArray(state.data.tagOrder) ? state.data.tagOrder : [];
+  const ordered = order.filter(t => set.has(t));
+  const remaining = Array.from(set).filter(t => !order.includes(t)).sort();
+  return [...ordered, ...remaining];
 }
 
 function filterEntries() {
@@ -620,19 +662,30 @@ function renderTags() {
     span.className = 'label';
     span.textContent = '（タグ未登録）';
     container.appendChild(span);
-    return;
+  } else {
+    tags.forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'chip' + (state.activeTags.has(t) ? ' active' : '');
+      chip.textContent = t;
+      chip.onclick = () => {
+        // 単一選択: 同じタグ再タップで解除、別のタグなら置換
+        if (state.activeTags.has(t)) {
+          state.activeTags.clear();
+        } else {
+          state.activeTags.clear();
+          state.activeTags.add(t);
+        }
+        render();
+      };
+      container.appendChild(chip);
+    });
   }
-  tags.forEach(t => {
-    const chip = document.createElement('span');
-    chip.className = 'chip' + (state.activeTags.has(t) ? ' active' : '');
-    chip.textContent = t;
-    chip.onclick = () => {
-      if (state.activeTags.has(t)) state.activeTags.delete(t);
-      else state.activeTags.add(t);
-      render();
-    };
-    container.appendChild(chip);
-  });
+  const manageBtn = document.createElement('button');
+  manageBtn.className = 'icon-btn';
+  manageBtn.style.marginLeft = 'auto';
+  manageBtn.textContent = '⚙ タグ管理';
+  manageBtn.onclick = openTagManageModal;
+  container.appendChild(manageBtn);
 }
 
 function renderList() {
@@ -1183,6 +1236,141 @@ function exportJson() {
   URL.revokeObjectURL(url);
 }
 
+// ===== タグ管理モーダル =====
+function openTagManageModal() {
+  const ul = document.getElementById('tag-manage-list');
+  ul.innerHTML = '';
+  const tags = allTags();
+  if (tags.length === 0) {
+    const li = document.createElement('li');
+    li.style.color = 'var(--muted)';
+    li.textContent = 'タグが登録されていません';
+    ul.appendChild(li);
+  } else {
+    tags.forEach(t => addTagManageRow(t));
+  }
+  document.getElementById('tag-manage-modal').classList.add('show');
+}
+
+function addTagManageRow(originalName) {
+  const ul = document.getElementById('tag-manage-list');
+  const li = document.createElement('li');
+  li.dataset.original = originalName;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = originalName;
+  li.appendChild(input);
+
+  const upBtn = document.createElement('button');
+  upBtn.type = 'button';
+  upBtn.title = '上へ';
+  upBtn.textContent = '↑';
+  upBtn.onclick = () => {
+    const prev = li.previousElementSibling;
+    if (prev) ul.insertBefore(li, prev);
+  };
+  li.appendChild(upBtn);
+
+  const downBtn = document.createElement('button');
+  downBtn.type = 'button';
+  downBtn.title = '下へ';
+  downBtn.textContent = '↓';
+  downBtn.onclick = () => {
+    const next = li.nextElementSibling;
+    if (next) ul.insertBefore(next, li);
+  };
+  li.appendChild(downBtn);
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.textContent = '削除';
+  delBtn.onclick = () => {
+    if (li.classList.contains('deleted')) {
+      li.classList.remove('deleted');
+      delBtn.textContent = '削除';
+      input.disabled = false;
+    } else {
+      li.classList.add('deleted');
+      delBtn.textContent = '取消';
+      input.disabled = true;
+    }
+  };
+  li.appendChild(delBtn);
+
+  ul.appendChild(li);
+}
+
+function closeTagManageModal() {
+  document.getElementById('tag-manage-modal').classList.remove('show');
+}
+
+function saveTagManage() {
+  const lis = Array.from(document.querySelectorAll('#tag-manage-list li[data-original]'));
+  const items = lis.map(li => ({
+    original: li.dataset.original,
+    current: li.querySelector('input[type="text"]').value.trim(),
+    deleted: li.classList.contains('deleted')
+  }));
+
+  // 空名チェック
+  for (const it of items) {
+    if (!it.deleted && !it.current) {
+      alert(`タグ名は空にできません（元: ${it.original}）`);
+      return;
+    }
+  }
+
+  const renameMap = new Map();
+  const deleteSet = new Set();
+  items.forEach(it => {
+    if (it.deleted) {
+      deleteSet.add(it.original);
+    } else if (it.original !== it.current) {
+      renameMap.set(it.original, it.current);
+    }
+  });
+
+  const transform = t => {
+    if (deleteSet.has(t)) return null;
+    return renameMap.get(t) || t;
+  };
+
+  // 全エントリに適用
+  state.data.entries.forEach(e => {
+    if (!Array.isArray(e.tags)) return;
+    const next = [];
+    const seen = new Set();
+    e.tags.forEach(t => {
+      const v = transform(t);
+      if (v && !seen.has(v)) { next.push(v); seen.add(v); }
+    });
+    e.tags = next;
+  });
+
+  // 新しいタグ順序
+  const orderSet = new Set();
+  const newOrder = [];
+  items.forEach(it => {
+    if (it.deleted) return;
+    const name = it.current;
+    if (!orderSet.has(name)) { orderSet.add(name); newOrder.push(name); }
+  });
+  state.data.tagOrder = newOrder;
+
+  // アクティブタグも追従
+  const activeNext = new Set();
+  state.activeTags.forEach(t => {
+    const v = transform(t);
+    if (v) activeNext.add(v);
+  });
+  state.activeTags = activeNext;
+
+  saveData(state.data);
+  closeTagManageModal();
+  render();
+}
+
 // ===== チェックリスト一括貼り付けモーダル =====
 let bulkPasteOnApply = null;
 
@@ -1247,10 +1435,12 @@ function onFilePicked(ev) {
 
 function applyImport(mode) {
   if (!pendingImportData) return;
+  const incomingOrder = Array.isArray(pendingImportData.tagOrder) ? pendingImportData.tagOrder : [];
   if (mode === 'overwrite') {
     state.data = {
       version: DATA_VERSION,
-      entries: pendingImportData.entries.map(normalizeImportedEntry)
+      entries: pendingImportData.entries.map(normalizeImportedEntry),
+      tagOrder: incomingOrder
     };
   } else {
     // merge: id重複は updatedAt が新しい方
@@ -1262,7 +1452,10 @@ function applyImport(mode) {
       const b = Date.parse(incoming.updatedAt || 0) || 0;
       if (b > a) map.set(incoming.id, incoming);
     });
-    state.data = { version: DATA_VERSION, entries: Array.from(map.values()) };
+    const currentOrder = Array.isArray(state.data.tagOrder) ? state.data.tagOrder : [];
+    const mergedOrder = [...currentOrder];
+    incomingOrder.forEach(t => { if (!mergedOrder.includes(t)) mergedOrder.push(t); });
+    state.data = { version: DATA_VERSION, entries: Array.from(map.values()), tagOrder: mergedOrder };
   }
   saveData(state.data);
   pendingImportData = null;
@@ -1312,6 +1505,8 @@ document.getElementById('btn-import-overwrite').onclick = () => applyImport('ove
 document.getElementById('btn-import-merge').onclick = () => applyImport('merge');
 document.getElementById('btn-cancel-bp').onclick = closeBulkPasteModal;
 document.getElementById('btn-apply-bp').onclick = applyBulkPaste;
+document.getElementById('btn-cancel-tag-manage').onclick = closeTagManageModal;
+document.getElementById('btn-save-tag-manage').onclick = saveTagManage;
 document.getElementById('btn-toggle-list').onclick = () => {
   document.body.classList.toggle('list-hidden');
 };
@@ -1327,6 +1522,7 @@ document.addEventListener('keydown', e => {
     closeEditModal();
     document.getElementById('import-modal').classList.remove('show');
     closeBulkPasteModal();
+    closeTagManageModal();
     if (state.editingSection) {
       state.editingSection = null;
       render();
