@@ -447,6 +447,46 @@
     border-radius: 6px;
     text-align: center;
   }
+  /* 距離・コース ジャンプチップ */
+  .course-jump-bar {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin: 4px 0 12px;
+    padding: 8px 10px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .course-jump-bar .label {
+    font-size: 11px; color: var(--muted);
+    align-self: center; margin-right: 2px;
+  }
+  .course-jump-chip {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .course-jump-chip:hover {
+    background: var(--tag-bg);
+    border-color: var(--primary);
+    color: var(--primary-dark);
+  }
+  .course-jump-chip.complete {
+    background: #f0fdf4; color: #166534; border-color: #86efac;
+  }
+  .checklist-group.jump-target-hit {
+    animation: groupPulse 1.2s ease;
+  }
+  @keyframes groupPulse {
+    0%, 55% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  }
 
   /* インライン編集 */
   .title-row {
@@ -1784,28 +1824,119 @@ function renderCoursesSection(card, entry) {
       prog.textContent = `${course.name} — ${done} / ${total} 完了 (${pct}%)`;
       sec.appendChild(prog);
 
-      const ul = document.createElement('ul');
-      ul.className = 'checklist';
-      course.checklist.forEach((item, i) => {
-        const li = document.createElement('li');
-        if (item.done) li.classList.add('done');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = item.done;
-        cb.id = `course-chk-${entry.id}-${curIdx}-${i}`;
-        cb.onchange = () => {
-          course.checklist[i].done = cb.checked;
-          saveData(state.data);
+      const groups = groupChecklistItems(course.checklist);
+      const groupIdOf = (gi) => `course-group-${entry.id}-${curIdx}-${gi}`;
+      const jumpToGroup = (gi) => {
+        const key = `${entry.id}::course:${curIdx}::${groups[gi].name}`;
+        state.collapsedSections.delete(key);
+        const el = document.getElementById(groupIdOf(gi));
+        const container = document.querySelector('.pane-detail');
+        const doScroll = () => {
+          const t = document.getElementById(groupIdOf(gi));
+          if (!t) return;
+          if (container) {
+            const cr = container.getBoundingClientRect();
+            const tr = t.getBoundingClientRect();
+            container.scrollTo({
+              top: tr.top - cr.top + container.scrollTop - 8,
+              behavior: 'smooth'
+            });
+          } else {
+            t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          t.classList.add('jump-target-hit');
+          setTimeout(() => t.classList.remove('jump-target-hit'), 1300);
+        };
+        if (!el) {
+          render();
+          requestAnimationFrame(doScroll);
+        } else {
+          doScroll();
+        }
+      };
+
+      // ジャンプチップバー（2グループ以上あるときのみ）
+      if (groups.length >= 2) {
+        const jumpBar = document.createElement('div');
+        jumpBar.className = 'course-jump-bar';
+        const lbl = document.createElement('span');
+        lbl.className = 'label';
+        lbl.textContent = '▼ 距離/コース';
+        jumpBar.appendChild(lbl);
+        groups.forEach((g, gi) => {
+          const gDone = g.items.filter(i => i.done).length;
+          const gTotal = g.items.length;
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'course-jump-chip'
+            + (gDone === gTotal && gTotal > 0 ? ' complete' : '');
+          chip.textContent = `${g.name} ${gDone}/${gTotal}`;
+          chip.onclick = () => jumpToGroup(gi);
+          jumpBar.appendChild(chip);
+        });
+        sec.appendChild(jumpBar);
+      }
+
+      groups.forEach((g, gi) => {
+        const key = `${entry.id}::course:${curIdx}::${g.name}`;
+        const collapsed = state.collapsedSections.has(key);
+        const gDone = g.items.filter(i => i.done).length;
+        const gTotal = g.items.length;
+        const gAllDone = gDone === gTotal && gTotal > 0;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.id = groupIdOf(gi);
+        groupDiv.className = 'checklist-group'
+          + (collapsed ? ' collapsed' : '')
+          + (gAllDone ? ' complete' : '');
+
+        const header = document.createElement('div');
+        header.className = 'checklist-group-header';
+        const toggle = document.createElement('span');
+        toggle.className = 'checklist-group-toggle';
+        toggle.textContent = collapsed ? '▶' : '▼';
+        const title = document.createElement('span');
+        title.className = 'checklist-group-title';
+        title.textContent = g.name;
+        const badge = document.createElement('span');
+        badge.className = 'checklist-group-badge';
+        badge.textContent = `${gDone} / ${gTotal}`;
+        header.appendChild(toggle);
+        header.appendChild(title);
+        header.appendChild(badge);
+        header.onclick = () => {
+          if (state.collapsedSections.has(key)) state.collapsedSections.delete(key);
+          else state.collapsedSections.add(key);
           render();
         };
-        const label = document.createElement('label');
-        label.htmlFor = cb.id;
-        label.textContent = item.text;
-        li.appendChild(cb);
-        li.appendChild(label);
-        ul.appendChild(li);
+        groupDiv.appendChild(header);
+
+        if (!collapsed) {
+          const ul = document.createElement('ul');
+          ul.className = 'checklist-group-items';
+          g.items.forEach(item => {
+            const li = document.createElement('li');
+            if (item.done) li.classList.add('done');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = item.done;
+            cb.id = `course-chk-${entry.id}-${curIdx}-${item.index}`;
+            cb.onchange = () => {
+              course.checklist[item.index].done = cb.checked;
+              saveData(state.data);
+              render();
+            };
+            const label = document.createElement('label');
+            label.htmlFor = cb.id;
+            label.textContent = item.text;
+            li.appendChild(cb);
+            li.appendChild(label);
+            ul.appendChild(li);
+          });
+          groupDiv.appendChild(ul);
+        }
+        sec.appendChild(groupDiv);
       });
-      sec.appendChild(ul);
     } else {
       const empty = document.createElement('div');
       empty.className = 'course-empty';
