@@ -765,7 +765,7 @@
     <input type="text" id="search-input" placeholder="🔍 キーワード検索（例：現場、契約、立会）">
     <button id="btn-clear-search">クリア</button>
   </div>
-  <div class="tag-row" id="tag-row">
+  <div class="tag-row" id="tag-row" style="display:none;">
     <span class="label">タグ:</span>
   </div>
 </div>
@@ -1325,17 +1325,6 @@ function renderList() {
     title.className = 'title';
     title.textContent = e.title;
     item.appendChild(title);
-    if (e.tags && e.tags.length) {
-      const tags = document.createElement('div');
-      tags.className = 'tags';
-      e.tags.forEach(t => {
-        const c = document.createElement('span');
-        c.className = 'chip readonly';
-        c.textContent = t;
-        tags.appendChild(c);
-      });
-      item.appendChild(tags);
-    }
     item.onclick = () => {
       state.selectedId = e.id;
       state.editingSection = null;
