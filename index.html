@@ -488,6 +488,147 @@
     100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
   }
 
+  /* 競馬場タブの関連リソース */
+  .course-resources {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .course-resource-block {
+    flex: 1 1 260px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .course-resource-block > .title {
+    font-size: 11px; color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .course-link-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .course-link-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+    background: #eff6ff;
+    color: var(--primary-dark);
+    text-decoration: none;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .course-link-chip:hover { background: var(--primary); color: #fff; }
+  .course-link-chip .label {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 240px;
+  }
+  .course-image-list {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .course-image-thumb-wrap {
+    display: flex; flex-direction: column; gap: 2px;
+    align-items: center; max-width: 120px;
+  }
+  .course-image-thumb {
+    width: 120px; height: 90px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: zoom-in;
+    background: #fff;
+    display: block;
+  }
+  .course-image-thumb:hover { border-color: var(--primary); }
+  .course-image-thumb-wrap .caption {
+    font-size: 11px; color: var(--muted);
+    text-align: center;
+    max-width: 120px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* 編集モード: リンク・画像 */
+  .resource-edit-section {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #fafbfc;
+    margin-bottom: 10px;
+  }
+  .resource-edit-section > .title {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 6px; font-weight: 600;
+  }
+  .link-edit-row {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 4px;
+  }
+  .link-edit-row input[type="text"] {
+    font-family: inherit; font-size: 13px;
+    padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: #fff; min-width: 0;
+  }
+  .link-edit-row .lbl { flex: 0 0 40%; }
+  .link-edit-row .url { flex: 1 1 auto; }
+  .link-edit-row button {
+    padding: 4px 8px; color: var(--danger); border-color: var(--border);
+  }
+  .image-edit-row {
+    display: flex; gap: 8px; align-items: center;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+  .image-edit-row img {
+    width: 70px; height: 54px; object-fit: cover;
+    border-radius: 3px;
+    background: #f0f3f7;
+    cursor: zoom-in;
+    flex: 0 0 70px;
+  }
+  .image-edit-row input[type="text"] {
+    flex: 1; font-family: inherit; font-size: 13px;
+    padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: #fff; min-width: 0;
+  }
+  .image-edit-row button {
+    padding: 4px 8px; color: var(--danger); border-color: var(--border);
+  }
+  .resource-edit-section .row-actions {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+  }
+
+  /* 画像ビューア */
+  .image-viewer {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 30px;
+  }
+  .image-viewer.show { display: flex; }
+  .image-viewer img {
+    max-width: 100%; max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  .image-viewer .iv-close {
+    position: absolute; top: 14px; right: 14px;
+    color: #fff; font-size: 22px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.3);
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .image-viewer .iv-close:hover { background: rgba(0,0,0,0.75); }
+
   /* インライン編集 */
   .title-row {
     display: flex; align-items: center; gap: 8px;
@@ -698,6 +839,12 @@
   </div>
 </div>
 
+<!-- 画像ビューア -->
+<div class="image-viewer" id="image-viewer" role="dialog" aria-label="画像ビューア">
+  <button type="button" class="iv-close" id="iv-close" aria-label="閉じる">×</button>
+  <img id="iv-img" alt="">
+</div>
+
 <!-- チェックリスト一括貼り付けモーダル -->
 <div class="modal-backdrop" id="bulk-paste-modal">
   <div class="modal">
@@ -746,6 +893,18 @@ function ensureCourses(entry) {
     name: (c && c.name) ? String(c.name) : '(無題)',
     checklist: Array.isArray(c && c.checklist)
       ? c.checklist.map(x => ({ text: String(x.text || ''), done: !!x.done }))
+      : [],
+    links: Array.isArray(c && c.links)
+      ? c.links.map(l => ({
+          label: String((l && l.label) || ''),
+          url: String((l && l.url) || '')
+        })).filter(l => l.url)
+      : [],
+    images: Array.isArray(c && c.images)
+      ? c.images.map(im => ({
+          src: String((im && im.src) || ''),
+          caption: String((im && im.caption) || '')
+        })).filter(im => im.src)
       : []
   }));
   return entry;
@@ -1695,6 +1854,143 @@ function renderCoursesSection(card, entry) {
     nameRow.appendChild(nameInput);
     area.appendChild(nameRow);
 
+    // --- リンク編集 ---
+    let editLinks = (course.links || []).map(l => ({
+      label: l.label || '', url: l.url || ''
+    }));
+    const linksSection = document.createElement('div');
+    linksSection.className = 'resource-edit-section';
+    const linksTitle = document.createElement('div');
+    linksTitle.className = 'title';
+    linksTitle.textContent = '📎 関連リンク';
+    linksSection.appendChild(linksTitle);
+    const linksHolder = document.createElement('div');
+    linksSection.appendChild(linksHolder);
+    const linksActions = document.createElement('div');
+    linksActions.className = 'row-actions';
+    linksSection.appendChild(linksActions);
+    const renderLinksEdit = () => {
+      linksHolder.innerHTML = '';
+      editLinks.forEach((l, i) => {
+        const row = document.createElement('div');
+        row.className = 'link-edit-row';
+        const lbl = document.createElement('input');
+        lbl.type = 'text';
+        lbl.className = 'lbl';
+        lbl.placeholder = 'ラベル（例：福島競馬場の特徴）';
+        lbl.value = l.label;
+        lbl.oninput = () => { editLinks[i].label = lbl.value; };
+        const url = document.createElement('input');
+        url.type = 'text';
+        url.className = 'url';
+        url.placeholder = 'https://...';
+        url.value = l.url;
+        url.oninput = () => { editLinks[i].url = url.value; };
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.textContent = '×';
+        del.onclick = () => { editLinks.splice(i, 1); renderLinksEdit(); };
+        row.appendChild(lbl);
+        row.appendChild(url);
+        row.appendChild(del);
+        linksHolder.appendChild(row);
+      });
+    };
+    const addLinkBtn = document.createElement('button');
+    addLinkBtn.type = 'button';
+    addLinkBtn.textContent = '＋ リンク追加';
+    addLinkBtn.onclick = () => {
+      editLinks.push({ label: '', url: '' });
+      renderLinksEdit();
+      const last = linksHolder.lastElementChild;
+      if (last) last.querySelector('input.lbl').focus();
+    };
+    linksActions.appendChild(addLinkBtn);
+    renderLinksEdit();
+    area.appendChild(linksSection);
+
+    // --- 画像編集 ---
+    let editImages = (course.images || []).map(im => ({
+      src: im.src || '', caption: im.caption || ''
+    }));
+    const imagesSection = document.createElement('div');
+    imagesSection.className = 'resource-edit-section';
+    const imagesTitle = document.createElement('div');
+    imagesTitle.className = 'title';
+    imagesTitle.textContent = '🖼️ 画像';
+    imagesSection.appendChild(imagesTitle);
+    const imagesHolder = document.createElement('div');
+    imagesSection.appendChild(imagesHolder);
+    const imagesActions = document.createElement('div');
+    imagesActions.className = 'row-actions';
+    imagesSection.appendChild(imagesActions);
+    const renderImagesEdit = () => {
+      imagesHolder.innerHTML = '';
+      editImages.forEach((im, i) => {
+        const row = document.createElement('div');
+        row.className = 'image-edit-row';
+        const thumb = document.createElement('img');
+        thumb.src = im.src;
+        thumb.alt = im.caption || '';
+        thumb.onclick = () => openImageViewer(im.src);
+        const cap = document.createElement('input');
+        cap.type = 'text';
+        cap.placeholder = 'キャプション（省略可）';
+        cap.value = im.caption;
+        cap.oninput = () => { editImages[i].caption = cap.value; };
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.textContent = '×';
+        del.onclick = () => { editImages.splice(i, 1); renderImagesEdit(); };
+        row.appendChild(thumb);
+        row.appendChild(cap);
+        row.appendChild(del);
+        imagesHolder.appendChild(row);
+      });
+    };
+    const uploadImgBtn = document.createElement('button');
+    uploadImgBtn.type = 'button';
+    uploadImgBtn.textContent = '📤 画像アップロード';
+    uploadImgBtn.onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'image/*';
+      inp.multiple = true;
+      inp.onchange = async () => {
+        const files = Array.from(inp.files || []);
+        for (const file of files) {
+          try {
+            const src = await readImageFileAsDataURL(file);
+            editImages.push({ src, caption: '' });
+          } catch (err) {
+            alert(`画像読み込み失敗: ${file.name}`);
+          }
+        }
+        renderImagesEdit();
+      };
+      inp.click();
+    };
+    const addImgUrlBtn = document.createElement('button');
+    addImgUrlBtn.type = 'button';
+    addImgUrlBtn.textContent = '🔗 URLで追加';
+    addImgUrlBtn.onclick = () => {
+      const u = (prompt('画像URL（https://...）') || '').trim();
+      if (!u) return;
+      editImages.push({ src: u, caption: '' });
+      renderImagesEdit();
+    };
+    imagesActions.appendChild(uploadImgBtn);
+    imagesActions.appendChild(addImgUrlBtn);
+    renderImagesEdit();
+    area.appendChild(imagesSection);
+
+    const collectLinks = () => editLinks
+      .map(l => ({ label: (l.label || '').trim(), url: (l.url || '').trim() }))
+      .filter(l => l.url);
+    const collectImages = () => editImages
+      .map(im => ({ src: (im.src || '').trim(), caption: (im.caption || '').trim() }))
+      .filter(im => im.src);
+
     // チェック項目リスト編集
     const ul = document.createElement('ul');
     ul.className = 'checklist-edit-list';
@@ -1762,7 +2058,9 @@ function renderCoursesSection(card, entry) {
       // 貼り付けた瞬間に全体保存
       commitCourse({
         name: nameInput.value.trim() || course.name,
-        checklist: collectItems()
+        checklist: collectItems(),
+        links: collectLinks(),
+        images: collectImages()
       });
     });
     btnRow.appendChild(bulkBtn);
@@ -1791,7 +2089,9 @@ function renderCoursesSection(card, entry) {
     save.textContent = '保存';
     save.onclick = () => commitCourse({
       name: nameInput.value.trim() || course.name,
-      checklist: collectItems()
+      checklist: collectItems(),
+      links: collectLinks(),
+      images: collectImages()
     });
     acts.appendChild(delBtn);
     acts.appendChild(cancel);
@@ -1817,6 +2117,72 @@ function renderCoursesSection(card, entry) {
 
     const total = course.checklist.length;
     const done = course.checklist.filter(c => c.done).length;
+    // 関連リンク・画像（チェック項目の有無に関わらず表示）
+    const hasLinks = Array.isArray(course.links) && course.links.length > 0;
+    const hasImages = Array.isArray(course.images) && course.images.length > 0;
+    if (hasLinks || hasImages) {
+      const resources = document.createElement('div');
+      resources.className = 'course-resources';
+      if (hasLinks) {
+        const block = document.createElement('div');
+        block.className = 'course-resource-block';
+        const t = document.createElement('div');
+        t.className = 'title';
+        t.textContent = '📎 関連リンク';
+        block.appendChild(t);
+        const list = document.createElement('div');
+        list.className = 'course-link-list';
+        course.links.forEach(l => {
+          const a = document.createElement('a');
+          a.className = 'course-link-chip';
+          a.href = l.url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          const icon = document.createElement('span');
+          icon.textContent = '🔗';
+          const lab = document.createElement('span');
+          lab.className = 'label';
+          lab.textContent = l.label || l.url;
+          a.appendChild(icon);
+          a.appendChild(lab);
+          list.appendChild(a);
+        });
+        block.appendChild(list);
+        resources.appendChild(block);
+      }
+      if (hasImages) {
+        const block = document.createElement('div');
+        block.className = 'course-resource-block';
+        const t = document.createElement('div');
+        t.className = 'title';
+        t.textContent = '🖼️ 画像';
+        block.appendChild(t);
+        const list = document.createElement('div');
+        list.className = 'course-image-list';
+        course.images.forEach(im => {
+          const wrap = document.createElement('div');
+          wrap.className = 'course-image-thumb-wrap';
+          const thumb = document.createElement('img');
+          thumb.className = 'course-image-thumb';
+          thumb.src = im.src;
+          thumb.alt = im.caption || '';
+          thumb.loading = 'lazy';
+          thumb.onclick = () => openImageViewer(im.src);
+          wrap.appendChild(thumb);
+          if (im.caption) {
+            const cap = document.createElement('div');
+            cap.className = 'caption';
+            cap.textContent = im.caption;
+            cap.title = im.caption;
+            wrap.appendChild(cap);
+          }
+          list.appendChild(wrap);
+        });
+        block.appendChild(list);
+        resources.appendChild(block);
+      }
+      sec.appendChild(resources);
+    }
     if (total > 0) {
       const pct = Math.round((done / total) * 100);
       const prog = document.createElement('div');
@@ -2245,6 +2611,48 @@ function saveTagManage() {
   render();
 }
 
+// ===== 画像ビューア / 画像アップロード =====
+function openImageViewer(src) {
+  if (!src) return;
+  const v = document.getElementById('image-viewer');
+  const img = document.getElementById('iv-img');
+  img.src = src;
+  v.classList.add('show');
+}
+function closeImageViewer() {
+  document.getElementById('image-viewer').classList.remove('show');
+  document.getElementById('iv-img').src = '';
+}
+
+async function readImageFileAsDataURL(file, maxDim = 1400, quality = 0.85) {
+  const raw = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(r.error || new Error('read failed'));
+    r.onload = () => resolve(r.result);
+    r.readAsDataURL(file);
+  });
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onerror = () => reject(new Error('decode failed'));
+      i.onload = () => resolve(i);
+      i.src = raw;
+    });
+    const long = Math.max(img.naturalWidth, img.naturalHeight);
+    const scale = long > maxDim ? maxDim / long : 1;
+    if (scale === 1 && raw.length < 400000) return raw;
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    return raw;
+  }
+}
+
 // ===== チェックリスト一括貼り付けモーダル =====
 let bulkPasteOnApply = null;
 
@@ -2384,6 +2792,10 @@ document.getElementById('btn-save-tag-manage').onclick = saveTagManage;
 document.getElementById('btn-toggle-list').onclick = () => {
   document.body.classList.toggle('list-hidden');
 };
+document.getElementById('iv-close').onclick = closeImageViewer;
+document.getElementById('image-viewer').addEventListener('click', (e) => {
+  if (e.target.id === 'image-viewer') closeImageViewer();
+});
 
 // モバイルでは初期状態で左ペインを畳む
 if (window.innerWidth <= 640) {
@@ -2397,6 +2809,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('import-modal').classList.remove('show');
     closeBulkPasteModal();
     closeTagManageModal();
+    closeImageViewer();
     if (state.editingSection) {
       state.editingSection = null;
       render();
